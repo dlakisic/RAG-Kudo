@@ -93,9 +93,8 @@ Desktop.ini
 *.swp
 *~.nib
 
-# Test files
-test_*.py
-*_test.py
+# Test files (keeping test dataset)
+!data/evaluation/test_dataset.json
 
 # uv
 .python-version

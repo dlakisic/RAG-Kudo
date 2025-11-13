@@ -14,6 +14,7 @@ from loguru import logger
 from src.ingestion import DoclingProcessor, SemanticChunker
 from src.retrieval import VectorStoreManager, KudoRetriever
 from src.generation import LLMManager, KudoResponseGenerator
+from src.utils import require_openai_api_key
 from config import settings
 
 
@@ -163,12 +164,7 @@ def main():
 ╚═══════════════════════════════════════════════════════════╝
 """)
 
-    if not settings.openai_api_key:
-        logger.error(
-            "OPENAI_API_KEY non configurée!\n"
-            "Créez un fichier .env basé sur .env.example et ajoutez votre clé API."
-        )
-        return
+    require_openai_api_key()
 
     logger.info(f"Configuration:")
     logger.info(f"  LLM: {settings.llm_provider}/{settings.llm_model}")

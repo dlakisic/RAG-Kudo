@@ -182,7 +182,7 @@ Sous-questions:"""
                 ),
             ]
 
-            response = self.llm_manager.chat(messages, temperature=0.3)
+            response = self.llm_manager.chat(messages)
 
             import re
             sub_queries = [

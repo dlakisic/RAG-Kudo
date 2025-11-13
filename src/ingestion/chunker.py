@@ -4,7 +4,6 @@ Divise les documents en chunks optimaux pour le RAG.
 """
 
 from typing import List, Dict, Optional
-from dataclasses import dataclass
 from loguru import logger
 
 from llama_index.core.node_parser import SemanticSplitterNodeParser
@@ -12,17 +11,6 @@ from llama_index.core.schema import Document, TextNode
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from config import settings
-
-
-@dataclass
-class ChunkMetadata:
-    """Métadonnées enrichies pour un chunk."""
-    source_file: str
-    chunk_id: int
-    section: Optional[str] = None
-    category: Optional[str] = None
-    importance: Optional[str] = None
-    article_reference: Optional[str] = None
 
 
 class SemanticChunker:

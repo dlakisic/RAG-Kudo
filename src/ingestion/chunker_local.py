@@ -4,7 +4,6 @@ Utilise Sentence Transformers sur GPU.
 """
 
 from typing import List, Dict, Optional
-from dataclasses import dataclass
 from loguru import logger
 
 from llama_index.core.node_parser import SemanticSplitterNodeParser
@@ -12,17 +11,6 @@ from llama_index.core.schema import Document, TextNode
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from src.utils.gpu_utils import get_device
-
-
-@dataclass
-class ChunkMetadata:
-    """Métadonnées enrichies pour un chunk."""
-    source_file: str
-    chunk_id: int
-    section: Optional[str] = None
-    category: Optional[str] = None
-    importance: Optional[str] = None
-    article_reference: Optional[str] = None
 
 
 class LocalSemanticChunker:

@@ -171,8 +171,6 @@ class DoclingProcessor:
 
 def main():
     """Fonction de test du module."""
-    from pathlib import Path
-
     input_dir = Path("data/raw")
     output_dir = Path("data/processed")
 

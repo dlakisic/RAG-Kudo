@@ -16,15 +16,10 @@ from src.retrieval import VectorStoreManager
 from src.generation import KudoResponseGenerator
 from config import settings
 
-vector_manager = None
-generator = None
-
 
 @cl.on_chat_start
 async def start():
     """Initialisation au démarrage du chat."""
-    global vector_manager, generator
-
     await cl.Message(
         content="""# 🥋 Bienvenue sur RAG-Kudo !
 
@@ -55,6 +50,9 @@ Posez-moi vos questions sur l'arbitrage en Kudo ! 👇
 
         generator = KudoResponseGenerator(index=index)
 
+        cl.user_session.set("vector_manager", vector_manager)
+        cl.user_session.set("generator", generator)
+
         stats = vector_manager.get_stats()
 
         await cl.Message(
@@ -80,7 +78,7 @@ Posez-moi vos questions sur l'arbitrage en Kudo ! 👇
 @cl.on_message
 async def main(message: cl.Message):
     """Traitement des messages utilisateur avec streaming."""
-    global generator
+    generator = cl.user_session.get("generator")
 
     if generator is None:
         await cl.Message(

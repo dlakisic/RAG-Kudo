@@ -11,7 +11,6 @@ from loguru import logger
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions, OcrOptions
-from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
 
 
 class MultilingualDoclingProcessor:

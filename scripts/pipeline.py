@@ -13,8 +13,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from loguru import logger
 
 from src.ingestion import DoclingProcessor, SemanticChunker
-from src.retrieval import VectorStoreManager, KudoRetriever
+from src.retrieval import VectorStoreManager
 from src.generation import KudoResponseGenerator
+from src.utils import require_openai_api_key
 from config import settings
 
 
@@ -245,12 +246,7 @@ Exemples d'utilisation:
         parser.print_help()
         return
 
-    if not settings.openai_api_key:
-        logger.error(
-            "OPENAI_API_KEY non configurée!\n"
-            "Créez un fichier .env basé sur .env.example"
-        )
-        return
+    require_openai_api_key()
 
     try:
         if args.command == 'ingest':
