@@ -321,21 +321,6 @@ quiz = generator.generate_quiz_question(category="scoring")
 
 ---
 
-## 🚧 Roadmap
-
-- [x] Pipeline d'ingestion (Docling)
-- [x] Retrieval avancé (reformulation + re-ranking)
-- [x] Interface Chainlit
-- [x] Évaluation RAGAS
-- [x] Observabilité LangFuse
-- [ ] Fine-tuning pour Faithfulness >80%
-- [ ] API REST (FastAPI)
-- [ ] Dataset étendu (50-100 questions)
-- [ ] Support vidéo (analyse de combats)
-- [ ] Déploiement cloud (Docker + K8s)
-
----
-
 ## 🤝 Contribution
 
 Les contributions sont bienvenues ! Pour contribuer :
@@ -345,29 +330,3 @@ Les contributions sont bienvenues ! Pour contribuer :
 3. Commit (`git commit -m 'Add amazing feature'`)
 4. Push (`git push origin feature/amazing-feature`)
 5. Ouvrir une Pull Request
-
----
-
-## 📄 Licence
-
-MIT License - voir [LICENSE](LICENSE) pour détails.
-
----
-
-## 📧 Contact
-
-**Dino Lakisic** - [GitHub](https://github.com/dlakisic)
-
----
-
-## 🙏 Remerciements
-
-- [LlamaIndex](https://www.llamaindex.ai/) pour l'orchestration RAG
-- [Docling](https://github.com/DS4SD/docling) pour l'extraction de documents
-- [RAGAS](https://docs.ragas.io/) pour l'évaluation
-- [LangFuse](https://langfuse.com/) pour l'observabilité
-- Fédération de Kudo pour les documents officiels
-
----
-
-**Note**: Ce système est conçu pour la formation et l'assistance. Les décisions officielles doivent toujours être prises en référence directe au règlement officiel du Kudo.
