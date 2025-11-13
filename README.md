@@ -43,15 +43,15 @@ graph TB
     G --> G1[🔍 LangFuse Traces<br/>• LLM calls<br/>• Retrieval logs<br/>• Latency tracking]
     G --> G2[📈 RAGAS Metrics<br/>• Faithfulness<br/>• Relevancy<br/>• Precision/Recall]
 
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#ffe1f5
-    style D fill:#e1ffe1
-    style E fill:#f5e1ff
-    style F fill:#ffe1e1
-    style G fill:#f0f0f0
-    style G1 fill:#e8f4f8
-    style G2 fill:#f8e8f4
+    style A fill:#b3e5fc,stroke:#01579b,stroke-width:2px,color:#000
+    style B fill:#ffe0b2,stroke:#e65100,stroke-width:2px,color:#000
+    style C fill:#f8bbd0,stroke:#880e4f,stroke-width:2px,color:#000
+    style D fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px,color:#000
+    style E fill:#e1bee7,stroke:#4a148c,stroke-width:2px,color:#000
+    style F fill:#ffccbc,stroke:#bf360c,stroke-width:2px,color:#000
+    style G fill:#cfd8dc,stroke:#263238,stroke-width:2px,color:#000
+    style G1 fill:#b2dfdb,stroke:#004d40,stroke-width:2px,color:#000
+    style G2 fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000
 ```
 
 ---
