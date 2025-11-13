@@ -1,0 +1,26 @@
+{
+  "questions": [
+    "Quelle est la valeur en points d'un ippon en Kudo ?",
+    "Quelles sont les techniques de frappe autorisées en Kudo ?",
+    "Quelle est la durée d'un combat pour les hommes adultes ?",
+    "Comment sont attribués les points au Kudo ?",
+    "Quel est l'équipement obligatoire pour un combattant U19 ?",
+    "Quels sont les coups de tête autorisés en Kudo ?",
+    "Comment peut-on marquer un kime au sol ?",
+    "Dans quel cas les frappes génitales sont-elles autorisées ?",
+    "Quelle est la durée des saisies autorisées pour les adultes ?",
+    "Combien de phases de sol sont autorisées en U19 ?"
+  ],
+  "ground_truths": [
+    "Un ippon vaut 8 points en Kudo. Il est attribué uniquement en cas de soumission ou de KO/TKO (knockout ou technical knockout).",
+    "Les techniques de frappe autorisées en Kudo incluent les coups de poing, les coups de pied, les coups de genou, les coups de coude et les coups de tête.",
+    "Un combat de Kudo pour les hommes adultes dure 3 minutes en un seul round. En cas d'égalité, un extra round de 3 minutes peut être organisé.",
+    "Les points sont attribués selon quatre niveaux : koka (1 point), yuko (2 points), waza-ari (4 points) et ippon (8 points). Un ippon met fin au combat et est attribué pour KO/TKO ou soumission.",
+    "L'équipement obligatoire pour un combattant U19 comprend le casque NHG (Neo Head Gear), le Kudogi blanc, les mitaines NFG (Neo Fist Gear), les mitaines avant-bras, le plastron, le protège-tibia et pied, et l'Obinome (coquille).",
+    "Les coups de tête sont interdits pour les catégories U13, U16 et U19. Ils sont autorisés uniquement pour les adultes, femmes adultes et vétérans.",
+    "Au sol, pour marquer un kime, l'arbitre doit estimer qu'il y a maîtrise de l'adversaire, technique et contrôle. L'adversaire doit être immobilisé par l'assaillant ou inerte de fatigue, et 3 coups sont portés en direction de l'adversaire sans le toucher.",
+    "Les frappes génitales sont interdites et constituent une faute, sauf dans un cas particulier spécifique : lorsqu'il y a un écart de 25 kg entre les deux adversaires et que cela est spécifié dès le début du combat.",
+    "Pour les adultes, les saisies sont autorisées pendant 10 secondes maximum.",
+    "En U19, 2 phases de sol de 30 secondes chacune sont autorisées."
+  ]
+}
