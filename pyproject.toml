@@ -1,0 +1,86 @@
+[project]
+name = "rag-kudo"
+version = "0.1.0"
+description = "Système RAG pour la formation des arbitres en Kudo"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "RAG-Kudo Team" }
+]
+
+dependencies = [
+    # Core RAG Framework
+    "llama-index>=0.10.12",
+    "llama-index-core>=0.10.12",
+    "llama-index-embeddings-openai>=0.1.6",
+    "llama-index-embeddings-huggingface>=0.2.0",
+    "llama-index-llms-openai>=0.1.13",
+    "llama-index-llms-anthropic>=0.1.0",
+    "llama-index-vector-stores-chroma>=0.1.5",
+
+    # Document Ingestion with Docling
+    "docling>=1.8.1",
+    "docling-core>=1.2.0",
+
+    # Vector Database
+    "chromadb>=0.4.22",
+
+    # LLM Providers
+    "openai>=1.12.0",
+    "anthropic>=0.18.1",
+
+    # Document Processing
+    "pypdf>=4.0.1",
+    "python-docx>=1.1.0",
+    "python-pptx>=0.6.23",
+    "markdown>=3.5.2",
+
+    # Embeddings alternatives
+    "sentence-transformers>=2.3.1",
+
+    # Utilities
+    "python-dotenv>=1.0.1",
+    "pydantic>=2.6.1",
+    "pydantic-settings>=2.1.0",
+
+    # Evaluation
+    "ragas>=0.1.5",
+    "datasets>=2.17.0",
+
+    # API & Interface
+    "fastapi>=0.109.2",
+    "uvicorn[standard]>=0.27.1",
+    "streamlit>=1.31.1",
+    "chainlit>=1.0.0",
+
+    # Monitoring & Logging
+    "loguru>=0.7.2",
+    "tqdm>=4.66.2",
+    "langfuse>=2.0.0",
+    "llama-index-callbacks-langfuse>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "jupyter>=1.0.0",
+    "ipykernel>=6.29.2",
+    "black>=24.2.0",
+    "pytest>=8.0.1",
+    "pytest-asyncio>=0.23.5",
+    "ruff>=0.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "config"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
