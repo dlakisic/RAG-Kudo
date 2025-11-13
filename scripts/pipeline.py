@@ -28,7 +28,6 @@ def ingest_documents(input_dir: Path, recursive: bool = True):
     """
     logger.info(f"Ingestion des documents depuis: {input_dir}")
 
-    # Traitement avec Docling
     processor = DoclingProcessor(
         output_dir=settings.processed_data_dir,
         extract_tables=settings.docling_extract_tables,
@@ -53,7 +52,6 @@ def create_index(documents: list = None, force: bool = False):
 
     manager = VectorStoreManager()
 
-    # Suppression de l'index existant si force=True
     if force:
         try:
             manager.delete_collection()
@@ -61,7 +59,6 @@ def create_index(documents: list = None, force: bool = False):
         except Exception:
             pass
 
-    # Chargement des documents si non fournis
     if documents is None:
         import json
         processed_files = list(settings.processed_data_dir.glob("*_processed.json"))
@@ -77,15 +74,12 @@ def create_index(documents: list = None, force: bool = False):
 
         logger.info(f"Chargé {len(documents)} documents traités")
 
-    # Découpage en chunks
     chunker = SemanticChunker()
     nodes = chunker.chunk_multiple_documents(documents)
     logger.success(f"✓ {len(nodes)} chunks créés")
 
-    # Création de l'index
     index = manager.create_index(nodes)
 
-    # Affichage des stats
     stats = manager.get_stats()
     logger.info("Statistiques de l'index:")
     for key, value in stats.items():
@@ -104,7 +98,6 @@ def query_system(question: str, show_sources: bool = True):
     """
     logger.info(f"Question: {question}")
 
-    # Chargement de l'index
     manager = VectorStoreManager()
     try:
         index = manager.load_index()
@@ -113,11 +106,9 @@ def query_system(question: str, show_sources: bool = True):
         logger.info("Créez d'abord l'index avec: python scripts/pipeline.py index")
         return
 
-    # Génération de la réponse
     generator = KudoResponseGenerator(index=index)
     result = generator.generate(question, include_sources=show_sources)
 
-    # Affichage de la réponse
     print(f"\n{'='*80}")
     print(f"Question: {result['question']}")
     print(f"{'='*80}\n")
@@ -141,7 +132,6 @@ def interactive_mode():
     """Mode interactif pour poser plusieurs questions."""
     logger.info("Mode interactif - Tapez 'quit' ou 'exit' pour quitter")
 
-    # Chargement de l'index
     manager = VectorStoreManager()
     try:
         index = manager.load_index()
@@ -167,17 +157,14 @@ def interactive_mode():
             if not question:
                 continue
 
-            # Génération de la réponse
             result = generator.generate(
                 question,
                 include_sources=True,
                 conversation_history=conversation_history,
             )
 
-            # Affichage
             print(f"\n💡 Réponse:\n{result['answer']}\n")
 
-            # Mise à jour de l'historique
             conversation_history.append({"role": "user", "content": question})
             conversation_history.append({"role": "assistant", "content": result['answer']})
 
@@ -218,7 +205,6 @@ Exemples d'utilisation:
 
     subparsers = parser.add_subparsers(dest='command', help='Commande à exécuter')
 
-    # Commande: ingest
     ingest_parser = subparsers.add_parser('ingest', help='Ingérer les documents')
     ingest_parser.add_argument(
         '--input-dir',
@@ -232,7 +218,6 @@ Exemples d'utilisation:
         help='Ne pas traiter les sous-répertoires'
     )
 
-    # Commande: index
     index_parser = subparsers.add_parser('index', help='Créer l\'index vectoriel')
     index_parser.add_argument(
         '--force',
@@ -240,10 +225,8 @@ Exemples d'utilisation:
         help='Forcer la recréation de l\'index'
     )
 
-    # Commande: full
     subparsers.add_parser('full', help='Pipeline complet (ingest + index)')
 
-    # Commande: query
     query_parser = subparsers.add_parser('query', help='Poser une question')
     query_parser.add_argument('question', type=str, help='Question à poser')
     query_parser.add_argument(
@@ -252,10 +235,8 @@ Exemples d'utilisation:
         help='Ne pas afficher les sources'
     )
 
-    # Commande: interactive
     subparsers.add_parser('interactive', help='Mode interactif')
 
-    # Commande: stats
     subparsers.add_parser('stats', help='Afficher les statistiques de l\'index')
 
     args = parser.parse_args()
@@ -264,7 +245,6 @@ Exemples d'utilisation:
         parser.print_help()
         return
 
-    # Vérification de la configuration
     if not settings.openai_api_key:
         logger.error(
             "OPENAI_API_KEY non configurée!\n"
@@ -272,7 +252,6 @@ Exemples d'utilisation:
         )
         return
 
-    # Exécution des commandes
     try:
         if args.command == 'ingest':
             ingest_documents(args.input_dir, recursive=not args.no_recursive)

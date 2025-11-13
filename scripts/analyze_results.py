@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pandas as pd
 import json
 
-# Charger le CSV
 results_path = Path(__file__).parent.parent / "data" / "evaluation" / "results.csv"
 df = pd.read_csv(results_path)
 
@@ -35,7 +34,6 @@ for idx, row in df.iterrows():
     print(f"Ground truth: {ground_truth}")
     print(f"{'-'*80}")
 
-    # Vérifier les métriques
     if 'faithfulness' in df.columns:
         print(f"Métriques:")
         print(f"  - Faithfulness: {row.get('faithfulness', 'N/A')}")

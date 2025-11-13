@@ -59,28 +59,24 @@ class LangFuseManager:
     def _initialize_langfuse(self):
         """Initialise LangFuse avec callback handler."""
         try:
-            # Initialisation du client LangFuse pour l'auth check
             self.client = Langfuse(
                 public_key=settings.langfuse_public_key,
                 secret_key=settings.langfuse_secret_key,
                 host=settings.langfuse_host,
             )
 
-            # Vérification de l'authentification
             auth_check = self.client.auth_check()
             if not auth_check:
                 logger.error("Échec de l'authentification LangFuse")
                 self.enabled = False
                 return
 
-            # Création du callback handler (c'est une fonction factory)
             self.callback_handler = langfuse_callback_handler(
                 public_key=settings.langfuse_public_key,
                 secret_key=settings.langfuse_secret_key,
                 host=settings.langfuse_host,
             )
 
-            # Configuration globale dans LlamaIndex Settings
             LlamaSettings.callback_manager = CallbackManager([self.callback_handler])
 
             logger.success(

@@ -52,6 +52,7 @@ data/processed/*
 !data/processed/.gitkeep
 data/vectorstore/*
 !data/vectorstore/.gitkeep
+data/evaluation/results.csv
 
 # Logs
 *.log
@@ -91,6 +92,10 @@ Desktop.ini
 *.bak
 *.swp
 *~.nib
+
+# Test files
+test_*.py
+*_test.py
 
 # uv
 .python-version

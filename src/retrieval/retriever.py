@@ -46,22 +46,18 @@ class KudoRetriever:
         self.use_query_reformulation = use_query_reformulation
         self.metadata_filters = metadata_filters or {}
 
-        # Initialisation du retriever de base
         self.base_retriever = VectorIndexRetriever(
             index=self.index,
-            similarity_top_k=self.top_k * 3,  # Récupérer plus pour fusion et post-processing
+            similarity_top_k=self.top_k * 3,
             callback_manager=LlamaSettings.callback_manager,
         )
 
-        # Post-processors
         self.similarity_postprocessor = SimilarityPostprocessor(
             similarity_cutoff=self.similarity_threshold
         )
 
-        # Re-ranker
         self.reranker = KudoReranker() if self.use_reranking else None
 
-        # Query reformulator
         self.query_reformulator = QueryReformulator(num_variations=2) if self.use_query_reformulation else None
 
         logger.info(
@@ -83,52 +79,41 @@ class KudoRetriever:
         """
         logger.info(f"Recherche pour: {query}")
 
-        # Stratégie de reformulation si activée
         if self.use_query_reformulation and self.query_reformulator:
-            # Génération de variations de la requête
             query_variations = self.query_reformulator.reformulate(query)
             logger.info(f"Généré {len(query_variations)} variations de requêtes")
 
-            # Récupération pour chaque variation
             all_nodes = []
             for i, q_var in enumerate(query_variations, 1):
                 logger.debug(f"Recherche pour variation {i}: {q_var[:50]}...")
                 query_bundle = QueryBundle(query_str=q_var)
                 variation_nodes = self.base_retriever.retrieve(query_bundle)
 
-                # Application du filtre de similarité AVANT la fusion
-                # (les scores sont encore des similarités cosine 0-1)
                 filtered_nodes = self.similarity_postprocessor.postprocess_nodes(variation_nodes)
                 logger.debug(f"Variation {i}: {len(variation_nodes)} → {len(filtered_nodes)} après filtrage")
 
                 all_nodes.append(filtered_nodes)
 
-            # Fusion des résultats avec Reciprocal Rank Fusion
             nodes = self._fuse_results(all_nodes)
             logger.info(f"Fusion: {len(nodes)} nodes uniques après RRF")
 
         else:
-            # Stratégie classique avec simple amélioration
             enhanced_query = self._enhance_query(query)
             query_bundle = QueryBundle(query_str=enhanced_query)
             nodes = self.base_retriever.retrieve(query_bundle)
             logger.info(f"Récupéré {len(nodes)} nodes initiaux")
 
-            # Application du filtre de similarité
             nodes = self.similarity_postprocessor.postprocess_nodes(nodes)
             logger.info(f"{len(nodes)} nodes après filtrage de similarité")
 
-        # Filtrage par métadonnées si spécifié
         if self.metadata_filters:
             nodes = self._filter_by_metadata(nodes, self.metadata_filters)
             logger.info(f"{len(nodes)} nodes après filtrage de métadonnées")
 
-        # Re-ranking si activé (utilise la requête originale)
         if self.use_reranking and len(nodes) > 1:
             nodes = self._rerank_nodes(query, nodes)
             logger.info(f"Re-ranking appliqué")
 
-        # Limitation au top_k final
         nodes = nodes[: self.top_k]
 
         logger.success(f"Retourné {len(nodes)} nodes finaux")
@@ -144,10 +129,8 @@ class KudoRetriever:
         Returns:
             Requête améliorée
         """
-        # Détection de mots-clés et ajout de contexte
         query_lower = query.lower()
 
-        # Synonymes et expansions pour le Kudo
         expansions = {
             "point": ["point", "score", "marquage"],
             "faute": ["faute", "sanction", "pénalité", "infraction"],
@@ -160,7 +143,7 @@ class KudoRetriever:
         enhanced_terms = []
         for key, synonyms in expansions.items():
             if key in query_lower:
-                enhanced_terms.extend(synonyms[:2])  # Ajouter 2 synonymes max
+                enhanced_terms.extend(synonyms[:2])
 
         if enhanced_terms:
             enhanced_query = f"{query} {' '.join(enhanced_terms)}"
@@ -210,7 +193,6 @@ class KudoRetriever:
         if self.reranker and self.reranker.is_enabled():
             return self.reranker.rerank(query, nodes, top_k=None)
 
-        # Fallback: retour des nodes originaux si reranker non disponible
         logger.debug("Re-ranker non disponible, retour des nodes originaux")
         return nodes
 
@@ -232,37 +214,28 @@ class KudoRetriever:
         """
         from collections import defaultdict
 
-        # Dictionnaire pour stocker les scores RRF
-        # Clé: node_id, Valeur: (score_rrf, node)
         rrf_scores = defaultdict(float)
-        node_map = {}  # Pour garder une référence au node complet
+        node_map = {}
 
-        # Calculer les scores RRF pour chaque node
         for node_list in all_nodes:
             for rank, node in enumerate(node_list, start=1):
-                # Utiliser le texte du node comme identifiant unique
                 node_id = node.node.node_id
 
-                # Score RRF: 1 / (k + rank)
                 rrf_score = 1.0 / (k + rank)
                 rrf_scores[node_id] += rrf_score
 
-                # Garder une référence au node (prendre le premier rencontré)
                 if node_id not in node_map:
                     node_map[node_id] = node
 
-        # Créer une liste de nodes avec leurs scores RRF
         fused_nodes = []
         for node_id, rrf_score in rrf_scores.items():
             node = node_map[node_id]
-            # Créer un nouveau NodeWithScore avec le score RRF
             fused_node = NodeWithScore(
                 node=node.node,
                 score=rrf_score
             )
             fused_nodes.append(fused_node)
 
-        # Trier par score RRF décroissant
         fused_nodes.sort(key=lambda x: x.score, reverse=True)
 
         logger.debug(f"RRF: fusionné {len(all_nodes)} listes en {len(fused_nodes)} nodes uniques")
@@ -282,16 +255,12 @@ class KudoRetriever:
         Returns:
             Nodes de la catégorie
         """
-        # Sauvegarde des filtres originaux
         original_filters = self.metadata_filters.copy()
 
-        # Application du filtre de catégorie
         self.metadata_filters["category"] = category
 
-        # Recherche
         nodes = self.retrieve(query)
 
-        # Restauration des filtres originaux
         self.metadata_filters = original_filters
 
         return nodes
@@ -310,8 +279,7 @@ class KudoRetriever:
             Nodes pertinents
         """
         if previous_context:
-            # Construction d'une requête enrichie avec le contexte
-            context_str = " ".join(previous_context[-3:])  # 3 derniers échanges
+            context_str = " ".join(previous_context[-3:])
             enriched_query = f"{context_str} {query}"
             logger.debug(f"Requête avec contexte: {enriched_query}")
             return self.retrieve(enriched_query)
@@ -323,16 +291,13 @@ def main():
     """Fonction de test du module."""
     from src.retrieval.vector_store import VectorStoreManager
 
-    # Chargement de l'index
     manager = VectorStoreManager()
 
     try:
         index = manager.load_index()
 
-        # Création du retriever
         retriever = KudoRetriever(index=index)
 
-        # Test de recherche
         test_queries = [
             "Quelles sont les techniques de frappe autorisées ?",
             "Comment sont attribués les points ?",

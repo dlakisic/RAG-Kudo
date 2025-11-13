@@ -6,7 +6,6 @@ Chat interactif avec affichage des sources et feedback.
 import sys
 from pathlib import Path
 
-# Ajout du répertoire parent au path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import chainlit as cl
@@ -17,8 +16,6 @@ from src.retrieval import VectorStoreManager
 from src.generation import KudoResponseGenerator
 from config import settings
 
-
-# Variables globales
 vector_manager = None
 generator = None
 
@@ -28,7 +25,6 @@ async def start():
     """Initialisation au démarrage du chat."""
     global vector_manager, generator
 
-    # Message de bienvenue avec image
     await cl.Message(
         content="""# 🥋 Bienvenue sur RAG-Kudo !
 
@@ -51,18 +47,14 @@ Posez-moi vos questions sur l'arbitrage en Kudo ! 👇
         author="Assistant"
     ).send()
 
-    # Chargement du système RAG
     try:
         await cl.Message(content="⏳ Chargement du système RAG...", author="System").send()
 
-        # Initialisation du vector store
         vector_manager = VectorStoreManager()
         index = vector_manager.load_index()
 
-        # Initialisation du générateur
         generator = KudoResponseGenerator(index=index)
 
-        # Stats
         stats = vector_manager.get_stats()
 
         await cl.Message(
@@ -98,19 +90,15 @@ async def main(message: cl.Message):
         return
 
     try:
-        # Récupération de l'historique pour le contexte
         conversation_history = cl.user_session.get("history", [])
 
-        # Récupération des documents pertinents
         nodes = generator.retriever.retrieve(message.content)
 
-        # Construction du contexte à partir des nodes
         context_str = "\n\n".join([
             f"[Source {i+1}] {node.node.get_content()}"
             for i, node in enumerate(nodes)
         ])
 
-        # Préparation des messages pour LlamaIndex
         messages = [
             ChatMessage(
                 role=MessageRole.SYSTEM,
@@ -130,12 +118,10 @@ Format de réponse:
             ),
         ]
 
-        # Ajout de l'historique (derniers 3 échanges)
         for msg_dict in conversation_history[-6:]:
             role = MessageRole.USER if msg_dict["role"] == "user" else MessageRole.ASSISTANT
             messages.append(ChatMessage(role=role, content=msg_dict["content"]))
 
-        # Ajout du contexte et de la question
         user_prompt = f"""CONTEXTE DU RÈGLEMENT OFFICIEL:
 {context_str}
 
@@ -153,35 +139,28 @@ Cite les règles exactes du règlement."""
 
         messages.append(ChatMessage(role=MessageRole.USER, content=user_prompt))
 
-        # Création du message pour streaming
         msg = cl.Message(content="")
         await msg.send()
 
-        # Streaming de la réponse via LlamaIndex
         response_stream = generator.llm_manager.llm.stream_chat(messages)
 
         for chunk in response_stream:
             if chunk.delta:
                 await msg.stream_token(chunk.delta)
 
-        # Mise à jour finale du message
         await msg.update()
 
-        # Mise à jour de l'historique
         conversation_history.append({"role": "user", "content": message.content})
         conversation_history.append({"role": "assistant", "content": msg.content})
         cl.user_session.set("history", conversation_history[-10:])
 
-        # Calcul de la confiance
         confidence = generator._compute_confidence(nodes)
         num_sources = len(nodes)
 
-        # Ajout des métadonnées
         metadata_text = f"\n\n---\n📊 **Confiance:** {confidence:.1%} | 📚 **Sources:** {num_sources}"
         msg.content += metadata_text
         await msg.update()
 
-        # Affichage des sources dans la sidebar
         if nodes:
             source_elements = []
 
@@ -193,7 +172,6 @@ Cite les règles exactes du règlement."""
                 excerpt = node.node.get_content()[:400]
                 score = node.score
 
-                # Création du contenu formaté pour chaque source
                 source_content = f"""**Section:** {section}
 **Catégorie:** {category}
 **Référence:** {article_ref}
@@ -214,7 +192,6 @@ Cite les règles exactes du règlement."""
                     )
                 )
 
-            # Ouvre la sidebar avec les sources
             await cl.ElementSidebar.set_title("📚 Sources consultées")
             await cl.ElementSidebar.set_elements(source_elements)
 
@@ -230,19 +207,6 @@ Cite les règles exactes du règlement."""
 def end():
     """Nettoyage à la fin du chat."""
     logger.info("Session de chat terminée")
-
-
-# Authentification désactivée pour accès libre
-# Pour activer l'authentification, décommentez le code ci-dessous :
-#
-# @cl.password_auth_callback
-# def auth_callback(username: str, password: str):
-#     """Authentification simple."""
-#     # Exemple : accepter n'importe quel username/password
-#     return cl.User(
-#         identifier=username,
-#         metadata={"role": "user"}
-#     )
 
 
 @cl.on_settings_update
@@ -261,9 +225,6 @@ async def on_positive_feedback(action: cl.Action):
         author="System"
     ).send()
 
-    # TODO: Sauvegarder le feedback dans une base de données
-    # pour analyse ultérieure et amélioration du système
-
 
 @cl.action_callback("feedback_negative")
 async def on_negative_feedback(action: cl.Action):
@@ -275,9 +236,6 @@ async def on_negative_feedback(action: cl.Action):
         author="System"
     ).send()
 
-    # TODO: Sauvegarder le feedback négatif pour amélioration
-
 
 if __name__ == "__main__":
-    # Pour lancer : chainlit run app/chainlit_app.py
     pass

@@ -75,7 +75,6 @@ class SemanticChunker:
         """
         logger.info(f"Découpage du document: {doc_data.get('file_name')}")
 
-        # Création du document LlamaIndex
         document = Document(
             text=doc_data.get("content", ""),
             metadata={
@@ -86,13 +85,10 @@ class SemanticChunker:
             },
         )
 
-        # Découpage sémantique
         nodes = self.splitter.get_nodes_from_documents([document])
 
-        # Enrichissement des métadonnées
         enriched_nodes = []
         for idx, node in enumerate(nodes):
-            # Détection automatique de la section/catégorie
             section_info = self._detect_section(node.text, doc_data.get("structure", []))
 
             node.metadata.update({
@@ -124,13 +120,11 @@ class SemanticChunker:
             "article_ref": None,
         }
 
-        # Recherche de titres dans le chunk
         for item in structure:
             if item.get("type") in ["heading", "title"]:
                 if item.get("text", "").lower() in chunk_text.lower():
                     section_info["section"] = item.get("text")
 
-                    # Détection de catégorie par mots-clés
                     text_lower = item.get("text", "").lower()
                     if any(kw in text_lower for kw in ["technique", "coup", "frappe"]):
                         section_info["category"] = "techniques_autorisees"
@@ -145,7 +139,6 @@ class SemanticChunker:
 
                     break
 
-        # Détection de références d'articles (ex: "Article 5.3")
         import re
         article_match = re.search(r"article\s+(\d+\.?\d*)", chunk_text.lower())
         if article_match:
@@ -189,19 +182,16 @@ def main():
     import json
     from pathlib import Path
 
-    # Chargement d'un document traité
     processed_file = Path("data/processed/exemple_processed.json")
 
     if processed_file.exists():
         with open(processed_file, 'r', encoding='utf-8') as f:
             doc_data = json.load(f)
 
-        # Découpage
         chunker = SemanticChunker()
         nodes = chunker.chunk_document(doc_data)
 
-        # Affichage des résultats
-        for i, node in enumerate(nodes[:3]):  # Premiers 3 chunks
+        for i, node in enumerate(nodes[:3]):
             print(f"\n--- Chunk {i} ---")
             print(f"Section: {node.metadata.get('section')}")
             print(f"Catégorie: {node.metadata.get('category')}")

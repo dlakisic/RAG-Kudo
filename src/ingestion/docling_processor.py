@@ -35,12 +35,10 @@ class DoclingProcessor:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Configuration du pipeline Docling avec la nouvelle API
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_table_structure = extract_tables
         pipeline_options.do_ocr = ocr_enabled
 
-        # Initialisation du convertisseur avec format_options
         self.converter = DocumentConverter(
             allowed_formats=[
                 InputFormat.PDF,
@@ -68,10 +66,8 @@ class DoclingProcessor:
         logger.info(f"Traitement du document: {file_path}")
 
         try:
-            # Conversion du document
             result = self.converter.convert(str(file_path))
 
-            # Extraction du contenu structuré
             doc_data = {
                 "source_file": str(file_path),
                 "file_name": file_path.name,
@@ -83,7 +79,6 @@ class DoclingProcessor:
                 "structure": self._extract_structure(result),
             }
 
-            # Sauvegarde du résultat
             output_file = self.output_dir / f"{file_path.stem}_processed.json"
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(doc_data, f, ensure_ascii=False, indent=2)
@@ -108,7 +103,6 @@ class DoclingProcessor:
         structure = []
 
         try:
-            # Extraction des sections, titres, paragraphes
             for item in result.document.iterate_items():
                 if hasattr(item, 'label') and hasattr(item, 'text'):
                     structure.append({
@@ -135,10 +129,8 @@ class DoclingProcessor:
         input_dir = Path(input_dir)
         logger.info(f"Traitement du répertoire: {input_dir}")
 
-        # Extensions supportées
         extensions = ['.pdf', '.docx', '.md', '.html']
 
-        # Recherche des fichiers
         if recursive:
             files = [f for ext in extensions for f in input_dir.rglob(f"*{ext}")]
         else:
@@ -146,7 +138,6 @@ class DoclingProcessor:
 
         logger.info(f"Trouvé {len(files)} fichiers à traiter")
 
-        # Traitement de chaque fichier
         results = []
         for file_path in files:
             try:
@@ -182,14 +173,11 @@ def main():
     """Fonction de test du module."""
     from pathlib import Path
 
-    # Configuration
     input_dir = Path("data/raw")
     output_dir = Path("data/processed")
 
-    # Initialisation du processeur
     processor = DoclingProcessor(output_dir=output_dir)
 
-    # Traitement des documents
     if input_dir.exists():
         results = processor.process_directory(input_dir)
         logger.info(f"Traités {len(results)} documents")

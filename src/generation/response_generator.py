@@ -87,24 +87,20 @@ class KudoResponseGenerator:
         self.llm_manager = llm_manager or LLMManager()
         self.retriever = retriever or KudoRetriever(index=index)
 
-        # Initialisation de LangFuse pour l'observabilité
         self.langfuse_manager = get_langfuse_manager()
         if self.langfuse_manager.is_enabled():
             logger.info("LangFuse observabilité activée")
 
-        # Configuration des prompts
         self.qa_prompt = PromptTemplate(QA_PROMPT_TEMPLATE)
         self.refine_prompt = PromptTemplate(REFINE_PROMPT_TEMPLATE)
 
-        # Synthétiseur de réponses
         self.response_synthesizer = get_response_synthesizer(
             llm=self.llm_manager.get_llm(),
             text_qa_template=self.qa_prompt,
             refine_template=self.refine_prompt,
-            response_mode="compact",  # compact, refine, tree_summarize
+            response_mode="compact",
         )
 
-        # Query engine
         self.query_engine = RetrieverQueryEngine(
             retriever=self.retriever.base_retriever,
             response_synthesizer=self.response_synthesizer,
@@ -132,17 +128,14 @@ class KudoResponseGenerator:
         logger.info(f"Génération de réponse en streaming pour: {question}")
 
         try:
-            # Récupération du contexte
             if conversation_history:
                 context = [msg["content"] for msg in conversation_history[-3:]]
                 nodes = self.retriever.retrieve_with_context(question, context)
             else:
                 nodes = self.retriever.retrieve(question)
 
-            # Streaming de la réponse
             streaming_response = self.query_engine.query(question)
 
-            # Retourne le texte complet et les nodes
             return str(streaming_response), nodes
 
         except Exception as e:
@@ -169,17 +162,14 @@ class KudoResponseGenerator:
         logger.info(f"Génération de réponse pour: {question}")
 
         try:
-            # Récupération du contexte
             if conversation_history:
                 context = [msg["content"] for msg in conversation_history[-3:]]
                 nodes = self.retriever.retrieve_with_context(question, context)
             else:
                 nodes = self.retriever.retrieve(question)
 
-            # Génération de la réponse
             response = self.query_engine.query(question)
 
-            # Construction de la réponse structurée
             result = {
                 "question": question,
                 "answer": str(response),
@@ -188,7 +178,6 @@ class KudoResponseGenerator:
                 "num_sources": len(nodes),
             }
 
-            # Ajout des sources si demandé
             if include_sources and settings.enable_citations:
                 result["sources"] = self._format_sources(nodes)
 
@@ -209,10 +198,8 @@ class KudoResponseGenerator:
         Returns:
             Réponse avec exemples
         """
-        # Récupération du contexte
         nodes = self.retriever.retrieve(question)
 
-        # Prompt enrichi pour demander des exemples
         enriched_prompt = f"""Question : {question}
 
 En te basant sur le contexte fourni, réponds en incluant :
@@ -241,9 +228,7 @@ Structure ta réponse clairement."""
         Returns:
             Question de quiz avec réponse
         """
-        # Récupération d'un contexte aléatoire
         if category:
-            # TODO: Implémenter la sélection aléatoire par catégorie
             context_query = f"règles de {category}"
         else:
             context_query = "règles d'arbitrage Kudo"
@@ -253,7 +238,6 @@ Structure ta réponse clairement."""
         if not nodes:
             raise ValueError("Aucun contexte disponible pour générer une question")
 
-        # Génération de la question via le LLM
         messages = [
             ChatMessage(
                 role=MessageRole.SYSTEM,
@@ -293,11 +277,9 @@ Explication: [explication détaillée]""",
         Returns:
             Explication détaillée
         """
-        # Recherche des règles pertinentes
         query = f"{situation} {decision}"
         nodes = self.retriever.retrieve(query)
 
-        # Génération de l'explication
         messages = [
             ChatMessage(
                 role=MessageRole.SYSTEM,
@@ -339,25 +321,19 @@ Explique si cette décision est correcte et pourquoi. Base ton explication sur l
 
         import math
 
-        # Détection du type de scores
-        # Si au moins un score est négatif, ce sont probablement des scores CrossEncoder
         has_negative = any(node.score < 0 for node in nodes)
 
         if has_negative:
-            # Scores de CrossEncoder : utiliser une transformation sigmoïde
-            # CrossEncoder scores sont généralement dans [-10, +10]
-            # Sigmoid ramène ça dans [0, 1]
+            # Scores de CrossEncoder dans [-10, +10], transformer avec sigmoid vers [0, 1]
             sigmoid_scores = [
                 1.0 / (1.0 + math.exp(-node.score))
                 for node in nodes
             ]
             avg_score = sum(sigmoid_scores) / len(sigmoid_scores)
         else:
-            # Scores normaux (similarité cosine, RRF, etc.)
-            # Déjà dans [0, 1] ou petits fractions positives
             avg_score = sum(node.score for node in nodes) / len(nodes)
 
-        return min(max(avg_score, 0.0), 1.0)  # Clamp entre 0 et 1
+        return min(max(avg_score, 0.0), 1.0)
 
     def _format_sources(self, nodes) -> List[Dict]:
         """
@@ -405,16 +381,13 @@ def main():
     """Fonction de test du module."""
     from src.retrieval.vector_store import VectorStoreManager
 
-    # Chargement de l'index
     manager = VectorStoreManager()
 
     try:
         index = manager.load_index()
 
-        # Création du générateur
         generator = KudoResponseGenerator(index=index)
 
-        # Test de génération
         test_questions = [
             "Quelles sont les techniques de frappe autorisées en Kudo ?",
             "Comment sont attribués les points dans un combat ?",
@@ -434,7 +407,7 @@ def main():
 
             if result["sources"]:
                 print("\nSources:")
-                for source in result["sources"][:2]:  # Afficher 2 premières sources
+                for source in result["sources"][:2]:
                     print(f"  - {source['section']} ({source['category']})")
                     print(f"    Score: {source['relevance_score']}")
 

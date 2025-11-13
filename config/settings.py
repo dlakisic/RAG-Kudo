@@ -86,13 +86,11 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Créer les répertoires s'ils n'existent pas
         self.raw_data_dir.mkdir(parents=True, exist_ok=True)
         self.processed_data_dir.mkdir(parents=True, exist_ok=True)
         self.vectorstore_dir.mkdir(parents=True, exist_ok=True)
 
 
-# Instance globale de configuration
 settings = Settings()
 
 

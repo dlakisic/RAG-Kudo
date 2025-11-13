@@ -93,30 +93,23 @@ class KudoReranker:
         try:
             logger.info(f"Re-ranking de {len(nodes)} nodes pour: '{query[:50]}...'")
 
-            # Préparer les paires (query, document)
             pairs = [(query, node.node.get_content()) for node in nodes]
 
-            # Obtenir les scores du CrossEncoder
             scores = self.model.predict(pairs)
 
-            # Créer de nouveaux nodes avec les scores mis à jour
             reranked_nodes = []
             for node, score in zip(nodes, scores):
-                # Créer un nouveau NodeWithScore avec le score du re-ranker
                 reranked_node = NodeWithScore(
                     node=node.node,
                     score=float(score)
                 )
                 reranked_nodes.append(reranked_node)
 
-            # Trier par score décroissant
             reranked_nodes.sort(key=lambda x: x.score, reverse=True)
 
-            # Limiter au top_k si spécifié
             if top_k:
                 reranked_nodes = reranked_nodes[:top_k]
 
-            # Logging des changements
             original_top = nodes[0].node.get_content()[:100] if nodes else ""
             reranked_top = reranked_nodes[0].node.get_content()[:100] if reranked_nodes else ""
 

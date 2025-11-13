@@ -37,19 +37,16 @@ class VectorStoreManager:
         self.persist_dir = persist_dir or settings.vectorstore_dir
         self.embedding_model_name = embedding_model or settings.embedding_model
 
-        # Initialisation du modèle d'embeddings
         self.embed_model = OpenAIEmbedding(
             model=self.embedding_model_name,
             api_key=settings.openai_api_key,
         )
 
-        # Initialisation de ChromaDB
         self.chroma_client = chromadb.PersistentClient(path=str(self.persist_dir))
         self.chroma_collection = self.chroma_client.get_or_create_collection(
             name=self.collection_name
         )
 
-        # Initialisation du vector store
         self.vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
         self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
 
@@ -157,7 +154,7 @@ class VectorStoreManager:
 
         try:
             results = self.chroma_collection.query(
-                query_texts=[""],  # Pas de query texte, juste filtres
+                query_texts=[""],
                 where=metadata_filter,
                 n_results=limit,
             )
@@ -171,7 +168,6 @@ def main():
     """Fonction de test du module."""
     from llama_index.core.schema import TextNode
 
-    # Création de nodes de test
     test_nodes = [
         TextNode(
             text="Les techniques de frappe autorisées en Kudo incluent les coups de poing et de pied.",
@@ -191,13 +187,8 @@ def main():
         ),
     ]
 
-    # Test du vector store
     manager = VectorStoreManager()
-
-    # Création de l'index
     index = manager.create_index(test_nodes)
-
-    # Affichage des stats
     stats = manager.get_stats()
     print("\nStatistiques:")
     for key, value in stats.items():

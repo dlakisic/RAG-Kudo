@@ -7,7 +7,6 @@ Montre le pipeline complet : ingestion -> indexation -> retrieval -> génératio
 import sys
 from pathlib import Path
 
-# Ajout du répertoire parent au path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from loguru import logger
@@ -22,7 +21,6 @@ def demo_ingestion():
     """Démo du module d'ingestion."""
     logger.info("=== DEMO: Ingestion de documents ===\n")
 
-    # Vérification de la présence de documents
     if not any(settings.raw_data_dir.iterdir()):
         logger.warning(
             f"Aucun document trouvé dans {settings.raw_data_dir}\n"
@@ -30,7 +28,6 @@ def demo_ingestion():
         )
         return []
 
-    # Traitement avec Docling
     processor = DoclingProcessor(
         output_dir=settings.processed_data_dir,
         extract_tables=settings.docling_extract_tables,
@@ -40,7 +37,6 @@ def demo_ingestion():
     documents = processor.process_directory(settings.raw_data_dir)
     logger.success(f"✓ {len(documents)} documents traités\n")
 
-    # Découpage sémantique
     chunker = SemanticChunker()
     nodes = chunker.chunk_multiple_documents(documents)
     logger.success(f"✓ {len(nodes)} chunks créés\n")
@@ -63,11 +59,9 @@ def demo_indexation(nodes):
             logger.error("Aucun index trouvé. Veuillez d'abord ingérer des documents.\n")
             return None
 
-    # Création de l'index
     manager = VectorStoreManager()
     index = manager.create_index(nodes)
 
-    # Affichage des stats
     stats = manager.get_stats()
     logger.info("Statistiques de l'index:")
     for key, value in stats.items():
@@ -87,7 +81,6 @@ def demo_retrieval(index):
 
     retriever = KudoRetriever(index=index)
 
-    # Questions de test
     test_queries = [
         "Quelles sont les techniques de frappe autorisées ?",
         "Comment sont attribués les points ?",
@@ -98,7 +91,7 @@ def demo_retrieval(index):
         nodes = retriever.retrieve(query)
 
         logger.info(f"Résultats: {len(nodes)} documents trouvés")
-        for i, node in enumerate(nodes[:2], 1):  # Afficher top 2
+        for i, node in enumerate(nodes[:2], 1):
             logger.info(f"  [{i}] Score: {node.score:.3f}")
             logger.info(f"      Catégorie: {node.node.metadata.get('category', 'N/A')}")
             logger.info(f"      Texte: {node.node.get_content()[:100]}...")
@@ -115,7 +108,6 @@ def demo_generation(index):
 
     generator = KudoResponseGenerator(index=index)
 
-    # Question de test
     question = "Explique-moi les règles de scoring en Kudo"
 
     logger.info(f"Question: {question}\n")
@@ -171,7 +163,6 @@ def main():
 ╚═══════════════════════════════════════════════════════════╝
 """)
 
-    # Vérification de la configuration
     if not settings.openai_api_key:
         logger.error(
             "OPENAI_API_KEY non configurée!\n"
@@ -185,7 +176,6 @@ def main():
     logger.info(f"  Vector Store: {settings.vectorstore_type}")
     logger.info(f"  Data dir: {settings.raw_data_dir}\n")
 
-    # Choix du mode
     print("Que voulez-vous faire ?")
     print("1. Pipeline complet (ingestion + indexation + démo)")
     print("2. Indexation uniquement (si documents déjà traités)")
@@ -196,7 +186,6 @@ def main():
         choice = input("\nVotre choix (1-4): ").strip()
 
         if choice == "1":
-            # Pipeline complet
             nodes = demo_ingestion()
             index = demo_indexation(nodes)
             if index:
@@ -204,19 +193,16 @@ def main():
                 demo_generation(index)
 
         elif choice == "2":
-            # Indexation seule
             nodes = demo_ingestion()
             demo_indexation(nodes)
 
         elif choice == "3":
-            # Démo avec index existant
             manager = VectorStoreManager()
             index = manager.load_index()
             demo_retrieval(index)
             demo_generation(index)
 
         elif choice == "4":
-            # Quiz
             demo_quiz()
 
         else:

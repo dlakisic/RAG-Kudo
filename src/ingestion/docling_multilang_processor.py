@@ -41,22 +41,18 @@ class MultilingualDoclingProcessor:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Langues par défaut si non spécifiées
         self.languages = languages or ['fr', 'en', 'ru']
 
-        # Configuration du pipeline avec OCR multilingue
         pipeline_options = PdfPipelineOptions()
         pipeline_options.do_table_structure = extract_tables
         pipeline_options.do_ocr = ocr_enabled
 
-        # Configuration de l'OCR pour supporter plusieurs langues
         if ocr_enabled:
             pipeline_options.ocr_options = OcrOptions(
-                kind="rapidocr",  # ou "tesseract" pour Tesseract
-                force_full_page_ocr=False,  # Uniquement sur les zones sans texte
+                kind="rapidocr",
+                force_full_page_ocr=False,
             )
 
-        # Initialisation du convertisseur
         self.converter = DocumentConverter(
             allowed_formats=[
                 InputFormat.PDF,
@@ -91,10 +87,8 @@ class MultilingualDoclingProcessor:
             logger.info(f"Langue suggérée: {language_hint}")
 
         try:
-            # Conversion du document
             result = self.converter.convert(str(file_path))
 
-            # Extraction du contenu
             doc_data = {
                 "source_file": str(file_path),
                 "file_name": file_path.name,
@@ -107,7 +101,6 @@ class MultilingualDoclingProcessor:
                 "structure": self._extract_structure(result),
             }
 
-            # Sauvegarde
             output_file = self.output_dir / f"{file_path.stem}_processed.json"
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(doc_data, f, ensure_ascii=False, indent=2)
@@ -156,10 +149,8 @@ class MultilingualDoclingProcessor:
 
         language_mapping = language_mapping or {}
 
-        # Extensions supportées
         extensions = ['.pdf', '.docx', '.md', '.html']
 
-        # Recherche des fichiers
         if recursive:
             files = [f for ext in extensions for f in input_dir.rglob(f"*{ext}")]
         else:
@@ -167,14 +158,11 @@ class MultilingualDoclingProcessor:
 
         logger.info(f"Trouvé {len(files)} fichiers à traiter")
 
-        # Traitement de chaque fichier
         results = []
         for file_path in files:
             try:
-                # Détection de la langue selon le nom de fichier
                 language_hint = language_mapping.get(file_path.name)
                 if not language_hint:
-                    # Auto-détection basique
                     filename_lower = file_path.name.lower()
                     if any(x in filename_lower for x in ['ru', 'russian', 'cyrillic']):
                         language_hint = 'ru'
@@ -200,11 +188,10 @@ def main():
     input_dir = Path("data/raw")
     output_dir = Path("data/processed")
 
-    # Exemple avec mapping de langues
     language_mapping = {
-        "pravila-vida-sporta-kudo_27.02.24.pdf": "ru",  # Document russe
-        "01 L'ARBITRAGE AU KUDO.pdf": "fr",  # Document français
-        "KIF-Tournament-Rules.pdf": "en",  # Document anglais
+        "pravila-vida-sporta-kudo_27.02.24.pdf": "ru",
+        "01 L'ARBITRAGE AU KUDO.pdf": "fr",
+        "KIF-Tournament-Rules.pdf": "en",
     }
 
     processor = MultilingualDoclingProcessor(output_dir=output_dir)

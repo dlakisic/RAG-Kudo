@@ -36,14 +36,12 @@ def get_optimal_batch_size(task: str = "embedding") -> int:
         Taille de batch recommandée
     """
     if not torch.cuda.is_available():
-        return 8  # Batch size conservatif pour CPU
+        return 8
 
-    # Récupération de la VRAM disponible
     vram_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
 
-    # Calcul du batch size selon la VRAM et la tâche
     if task == "embedding":
-        if vram_gb >= 12:  # RTX 4070 ou mieux
+        if vram_gb >= 12:
             return 64
         elif vram_gb >= 8:
             return 32
@@ -57,7 +55,7 @@ def get_optimal_batch_size(task: str = "embedding") -> int:
         else:
             return 1
 
-    return 16  # Défaut
+    return 16
 
 
 def clear_gpu_memory():
@@ -112,10 +110,8 @@ def print_gpu_info():
 def configure_cuda_optimizations():
     """Configure les optimisations CUDA pour PyTorch."""
     if torch.cuda.is_available():
-        # Activer cuDNN benchmark pour trouver les meilleurs algorithmes
         torch.backends.cudnn.benchmark = True
 
-        # Activer TF32 pour les GPUs Ampere et plus récents (RTX 30xx/40xx)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
 

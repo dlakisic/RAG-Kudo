@@ -5,7 +5,6 @@ import sys
 import json
 from pathlib import Path
 
-# Ajout du répertoire parent au path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from loguru import logger
@@ -37,26 +36,22 @@ def main():
     logger.info("ÉVALUATION RAGAS DU SYSTÈME RAG-KUDO")
     logger.info("=" * 80)
 
-    # Chargement du dataset de test
     dataset_path = Path(__file__).parent.parent / "data" / "evaluation" / "test_dataset.json"
     logger.info(f"Chargement du dataset: {dataset_path}")
 
     questions, ground_truths = load_test_dataset(str(dataset_path))
     logger.info(f"✅ Dataset chargé: {len(questions)} questions")
 
-    # Initialisation du système RAG
     logger.info("\nInitialisation du système RAG...")
     vector_manager = VectorStoreManager()
     index = vector_manager.load_index()
     generator = KudoResponseGenerator(index=index)
     logger.info("✅ Système RAG initialisé")
 
-    # Création de l'évaluateur
     logger.info("\nCréation de l'évaluateur RAGAS...")
     evaluator = RagasEvaluator(generator=generator)
     logger.info("✅ Évaluateur créé")
 
-    # Exécution de l'évaluation
     logger.info("\n" + "=" * 80)
     logger.info("DÉMARRAGE DE L'ÉVALUATION")
     logger.info("=" * 80 + "\n")
@@ -66,12 +61,10 @@ def main():
         ground_truths=ground_truths,
     )
 
-    # Sauvegarde des résultats
     output_path = Path(__file__).parent.parent / "data" / "evaluation" / "results.csv"
     results_df.to_csv(output_path, index=False)
     logger.info(f"\n💾 Résultats sauvegardés dans: {output_path}")
 
-    # Affichage des résultats détaillés
     logger.info("\n" + "=" * 80)
     logger.info("RÉSULTATS DÉTAILLÉS PAR QUESTION")
     logger.info("=" * 80 + "\n")

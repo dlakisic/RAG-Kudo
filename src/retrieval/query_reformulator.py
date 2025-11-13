@@ -37,7 +37,6 @@ class QueryReformulator:
             num_variations: Nombre de variations à générer
         """
         if llm_manager is None:
-            # Import lazy pour éviter l'import circulaire
             from src.generation.llm_manager import LLMManager
             llm_manager = LLMManager()
 
@@ -68,16 +67,13 @@ class QueryReformulator:
 
         queries = []
 
-        # 1. Requête originale
         if include_original:
             queries.append(query)
 
-        # 2. Reformulation par LLM
         if self.use_llm_reformulation:
             llm_variations = self._llm_reformulate(query)
             queries.extend(llm_variations[:self.num_variations])
 
-        # Déduplication tout en préservant l'ordre
         unique_queries = []
         seen = set()
         for q in queries:
@@ -128,24 +124,20 @@ Reformulations:"""
                 ),
             ]
 
-            # Génération de variations (température contrôlée par le LLMManager)
             response = self.llm_manager.chat(messages)
 
-            # Parse les variations (une par ligne)
             variations = [
                 line.strip()
                 for line in response.strip().split('\n')
                 if line.strip() and not line.strip().startswith(('-', '•', '*', '1.', '2.', '3.'))
             ]
 
-            # Nettoyer les numérotations éventuelles
             cleaned_variations = []
             for var in variations:
-                # Retirer les numéros en début de ligne (1., 2., etc.)
                 import re
                 cleaned = re.sub(r'^\d+\.\s*', '', var)
                 cleaned = re.sub(r'^[-•*]\s*', '', cleaned)
-                if cleaned and len(cleaned) > 10:  # Filtrer les variations trop courtes
+                if cleaned and len(cleaned) > 10:
                     cleaned_variations.append(cleaned)
 
             logger.debug(f"LLM a généré {len(cleaned_variations)} reformulations")
@@ -192,7 +184,6 @@ Sous-questions:"""
 
             response = self.llm_manager.chat(messages, temperature=0.3)
 
-            # Parse les sous-questions
             import re
             sub_queries = [
                 re.sub(r'^\d+\.\s*', '', line.strip())
@@ -205,7 +196,7 @@ Sous-questions:"""
 
         except Exception as e:
             logger.error(f"Erreur lors de la décomposition: {e}")
-            return [query]  # Fallback sur la question originale
+            return [query]
 
 
 def main():

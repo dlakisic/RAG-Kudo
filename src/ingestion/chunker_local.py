@@ -88,10 +88,8 @@ class LocalSemanticChunker:
             },
         )
 
-        # Découpage sémantique
         nodes = self.splitter.get_nodes_from_documents([document])
 
-        # Enrichissement des métadonnées
         enriched_nodes = []
         for idx, node in enumerate(nodes):
             section_info = self._detect_section(node.text, doc_data.get("structure", []))
@@ -116,32 +114,25 @@ class LocalSemanticChunker:
             "article_ref": None,
         }
 
-        # Recherche de titres
         for item in structure:
             if item.get("type") in ["heading", "title"]:
                 if item.get("text", "").lower() in chunk_text.lower():
                     section_info["section"] = item.get("text")
 
-                    # Catégorisation multilingue
                     text_lower = item.get("text", "").lower()
 
-                    # Français
                     if any(kw in text_lower for kw in ["technique", "coup", "frappe"]):
                         section_info["category"] = "techniques_autorisees"
                     elif any(kw in text_lower for kw in ["sanction", "faute", "interdit"]):
                         section_info["category"] = "sanctions"
                     elif any(kw in text_lower for kw in ["point", "score", "victoire"]):
                         section_info["category"] = "scoring"
-
-                    # Anglais
                     elif any(kw in text_lower for kw in ["technique", "strike", "attack"]):
                         section_info["category"] = "techniques_autorisees"
                     elif any(kw in text_lower for kw in ["penalty", "foul", "violation"]):
                         section_info["category"] = "sanctions"
                     elif any(kw in text_lower for kw in ["scoring", "point", "victory"]):
                         section_info["category"] = "scoring"
-
-                    # Russe (translittéré et cyrillique)
                     elif any(kw in text_lower for kw in ["техник", "удар", "прием"]):
                         section_info["category"] = "techniques_autorisees"
                     elif any(kw in text_lower for kw in ["наказан", "нарушен", "штраф"]):
@@ -154,11 +145,10 @@ class LocalSemanticChunker:
 
                     break
 
-        # Détection de références d'articles
         import re
         article_match = re.search(r"article\s+(\d+\.?\d*)", chunk_text.lower())
         if not article_match:
-            article_match = re.search(r"статья\s+(\d+\.?\d*)", chunk_text.lower())  # Russe
+            article_match = re.search(r"статья\s+(\d+\.?\d*)", chunk_text.lower())
         if article_match:
             section_info["article_ref"] = f"Article {article_match.group(1)}"
 
@@ -187,7 +177,6 @@ class LocalSemanticChunker:
 
 
 if __name__ == "__main__":
-    # Test
     import json
     from pathlib import Path
 
