@@ -35,8 +35,8 @@ class LLMManager:
         """
         self.provider = provider or settings.llm_provider
         self.model = model or settings.llm_model
-        self.temperature = temperature or settings.llm_temperature
-        self.max_tokens = max_tokens or settings.max_tokens
+        self.temperature = temperature if temperature is not None else settings.llm_temperature
+        self.max_tokens = max_tokens if max_tokens is not None else settings.max_tokens
 
         self.llm = self._initialize_llm()
 
@@ -129,7 +129,12 @@ class LLMManager:
         try:
             response = self.llm.stream_chat(messages)
             for chunk in response:
-                yield chunk.message.content
+                if hasattr(chunk, "delta") and chunk.delta:
+                    yield chunk.delta
+                    continue
+
+                if hasattr(chunk, "message") and getattr(chunk.message, "content", None):
+                    yield chunk.message.content
 
         except Exception as e:
             logger.error(f"Erreur lors du streaming: {e}")

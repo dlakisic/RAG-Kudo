@@ -7,9 +7,6 @@ from typing import List, Optional, Dict
 from loguru import logger
 
 from llama_index.core import VectorStoreIndex
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.response_synthesizers import get_response_synthesizer
-from llama_index.core.prompts import PromptTemplate
 from llama_index.core.llms import ChatMessage, MessageRole
 
 from src.retrieval.retriever import KudoRetriever
@@ -19,21 +16,22 @@ from config import settings
 
 
 # Prompts optimisés pour la formation d'arbitres
-SYSTEM_PROMPT = """Tu es un formateur expert en arbitrage de Kudo.
+SYSTEM_PROMPT = """Tu es un formateur expert en arbitrage de Kudo (Daido Juku).
 
-RÈGLES STRICTES À RESPECTER:
-1. Tu dois UNIQUEMENT utiliser les informations présentes dans le contexte fourni
-2. Si une information n'est PAS dans le contexte, tu DOIS dire "Je n'ai pas cette information dans le règlement fourni"
-3. NE JAMAIS inventer, extrapoler ou ajouter des informations de ta connaissance générale
-4. Cite EXACTEMENT les passages du règlement sans les reformuler de manière substantielle
-5. Si le contexte ne contient pas assez d'informations pour répondre complètement, indique-le clairement
+OBJECTIF : Répondre à la question en te basant sur le contexte fourni. Le contexte peut être en français, anglais ou russe — extrais l'information pertinente et réponds toujours en français.
 
-Format de réponse:
-- Commence par citer la règle exacte du contexte
-- Explique ensuite de manière pédagogique EN RESTANT FIDÈLE au texte source
-- Si tu donnes un exemple, assure-toi qu'il est directement basé sur le contexte fourni
+RÈGLES :
+1. Base-toi UNIQUEMENT sur les informations présentes dans le contexte
+2. Si le contexte contient l'information (même dans une autre langue), RÉPONDS — ne dis pas que l'info est absente
+3. Ne dis "Cette information n'est pas présente dans les documents fournis" que si AUCUN extrait ne traite du sujet de la question
+4. N'invente pas d'articles, de chiffres ou de règles absents du contexte
 
-Réponds toujours en français."""
+FORMAT :
+1. Cite le passage pertinent du contexte (traduis-le en français si nécessaire)
+2. Explique brièvement
+3. Indique la référence (Article X, Section Y) si disponible
+
+Réponds en français, de manière concise."""
 
 QA_PROMPT_TEMPLATE = """CONTEXTE DU RÈGLEMENT OFFICIEL :
 {context_str}
@@ -46,25 +44,12 @@ QUESTION DE L'ARBITRE EN FORMATION :
 ---
 
 INSTRUCTIONS :
-- Réponds UNIQUEMENT avec les informations présentes dans le contexte ci-dessus
-- Cite les règles exactes du règlement
-- Si l'information n'est pas dans le contexte, indique-le clairement
-- Structure ta réponse clairement
-- Indique la référence du règlement (article, section) si disponible
+- Réponds en te basant sur le contexte ci-dessus (même s'il est en anglais ou russe, réponds en français)
+- Si le contexte contient des éléments de réponse, utilise-les — ne refuse pas de répondre
+- Cite les règles et références du règlement (article, section) si disponibles
+- Ne dis que l'information est absente que si AUCUN extrait ne traite du sujet
 
 Réponse :"""
-
-REFINE_PROMPT_TEMPLATE = """Contexte original : {context_msg}
-
-Nous avons l'opportunité d'affiner la réponse avec le contexte supplémentaire suivant :
-{existing_answer}
-
-Question : {query_str}
-
-Avec ce nouveau contexte, améliore la réponse précédente. Si le nouveau contexte n'est pas utile, retourne la réponse originale.
-
-Réponse affinée :"""
-
 
 class KudoResponseGenerator:
     """Générateur de réponses pour la formation d'arbitres Kudo."""
@@ -91,21 +76,6 @@ class KudoResponseGenerator:
         if self.langfuse_manager.is_enabled():
             logger.info("LangFuse observabilité activée")
 
-        self.qa_prompt = PromptTemplate(QA_PROMPT_TEMPLATE)
-        self.refine_prompt = PromptTemplate(REFINE_PROMPT_TEMPLATE)
-
-        self.response_synthesizer = get_response_synthesizer(
-            llm=self.llm_manager.get_llm(),
-            text_qa_template=self.qa_prompt,
-            refine_template=self.refine_prompt,
-            response_mode="compact",
-        )
-
-        self.query_engine = RetrieverQueryEngine(
-            retriever=self.retriever.base_retriever,
-            response_synthesizer=self.response_synthesizer,
-        )
-
         logger.info("KudoResponseGenerator initialisé")
 
     async def generate_stream(
@@ -128,15 +98,11 @@ class KudoResponseGenerator:
         logger.info(f"Génération de réponse en streaming pour: {question}")
 
         try:
-            if conversation_history:
-                context = [msg["content"] for msg in conversation_history[-3:]]
-                nodes = self.retriever.retrieve_with_context(question, context)
-            else:
-                nodes = self.retriever.retrieve(question)
+            nodes = self._retrieve_nodes(question, conversation_history)
+            messages = self._build_messages(question, nodes, conversation_history)
 
-            streaming_response = self.query_engine.query(question)
-
-            return str(streaming_response), nodes
+            for token in self.llm_manager.stream_chat(messages):
+                yield token, nodes
 
         except Exception as e:
             logger.error(f"Erreur lors de la génération streaming: {e}")
@@ -147,6 +113,7 @@ class KudoResponseGenerator:
         question: str,
         include_sources: bool = True,
         conversation_history: Optional[List[Dict]] = None,
+        retrieved_nodes=None,
     ) -> Dict:
         """
         Génère une réponse complète à une question.
@@ -155,6 +122,7 @@ class KudoResponseGenerator:
             question: Question de l'utilisateur
             include_sources: Inclure les sources dans la réponse
             conversation_history: Historique de conversation
+            retrieved_nodes: Nodes déjà récupérés (évite un retrieval supplémentaire)
 
         Returns:
             Dictionnaire avec la réponse et métadonnées
@@ -162,13 +130,11 @@ class KudoResponseGenerator:
         logger.info(f"Génération de réponse pour: {question}")
 
         try:
-            if conversation_history:
-                context = [msg["content"] for msg in conversation_history[-3:]]
-                nodes = self.retriever.retrieve_with_context(question, context)
-            else:
-                nodes = self.retriever.retrieve(question)
-
-            response = self.query_engine.query(question)
+            nodes = retrieved_nodes if retrieved_nodes is not None else self._retrieve_nodes(
+                question, conversation_history
+            )
+            messages = self._build_messages(question, nodes, conversation_history)
+            response = self.llm_manager.chat(messages)
 
             result = {
                 "question": question,
@@ -210,7 +176,8 @@ En te basant sur le contexte fourni, réponds en incluant :
 
 Structure ta réponse clairement."""
 
-        response = self.query_engine.query(enriched_prompt)
+        messages = self._build_messages(enriched_prompt, nodes)
+        response = self.llm_manager.chat(messages)
 
         return {
             "question": question,
@@ -306,6 +273,37 @@ Explique si cette décision est correcte et pourquoi. Base ton explication sur l
             "relevant_rules": self._format_sources(nodes),
         }
 
+    def _retrieve_nodes(
+        self,
+        question: str,
+        conversation_history: Optional[List[Dict]] = None,
+    ):
+        if conversation_history:
+            context = [msg["content"] for msg in conversation_history[-3:]]
+            return self.retriever.retrieve_with_context(question, context)
+        return self.retriever.retrieve(question)
+
+    def _build_messages(
+        self,
+        question: str,
+        nodes,
+        conversation_history: Optional[List[Dict]] = None,
+    ) -> List[ChatMessage]:
+        context_str = self._format_context(nodes)
+        user_prompt = QA_PROMPT_TEMPLATE.format(context_str=context_str, query_str=question)
+
+        messages = [
+            ChatMessage(role=MessageRole.SYSTEM, content=SYSTEM_PROMPT),
+        ]
+
+        if conversation_history:
+            for msg_dict in conversation_history[-6:]:
+                role = MessageRole.USER if msg_dict["role"] == "user" else MessageRole.ASSISTANT
+                messages.append(ChatMessage(role=role, content=msg_dict["content"]))
+
+        messages.append(ChatMessage(role=MessageRole.USER, content=user_prompt))
+        return messages
+
     def _compute_confidence(self, nodes) -> float:
         """
         Calcule un score de confiance basé sur les scores de similarité.
@@ -352,7 +350,7 @@ Explique si cette décision est correcte et pourquoi. Base ton explication sur l
                 "file": node.node.metadata.get("file_name", "N/A"),
                 "section": node.node.metadata.get("section", "N/A"),
                 "category": node.node.metadata.get("category", "N/A"),
-                "article_ref": node.node.metadata.get("article_reference", "N/A"),
+                "article_reference": node.node.metadata.get("article_reference", "N/A"),
                 "relevance_score": round(node.score, 3),
                 "excerpt": node.node.get_content()[:200] + "...",
             })
