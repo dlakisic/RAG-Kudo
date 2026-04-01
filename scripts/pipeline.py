@@ -15,7 +15,7 @@ from loguru import logger
 from src.ingestion import DoclingProcessor, SemanticChunker
 from src.retrieval import VectorStoreManager
 from src.generation import KudoResponseGenerator
-from src.utils import require_openai_api_key
+from src.utils import require_api_keys
 from config import settings
 
 
@@ -124,7 +124,7 @@ def query_system(question: str, show_sources: bool = True):
         for i, source in enumerate(result['sources'], 1):
             print(f"\n[{i}] {source['section']}")
             print(f"    Catégorie: {source['category']}")
-            print(f"    Référence: {source['article_ref']}")
+            print(f"    Référence: {source['article_reference']}")
             print(f"    Score: {source['relevance_score']:.3f}")
             print(f"    Extrait: {source['excerpt'][:150]}...")
 
@@ -246,7 +246,7 @@ Exemples d'utilisation:
         parser.print_help()
         return
 
-    require_openai_api_key()
+    require_api_keys()
 
     try:
         if args.command == 'ingest':

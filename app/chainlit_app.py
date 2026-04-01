@@ -10,7 +10,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import chainlit as cl
 from loguru import logger
-from llama_index.core.llms import ChatMessage, MessageRole
 
 from src.retrieval import VectorStoreManager
 from src.generation import KudoResponseGenerator
@@ -90,61 +89,20 @@ async def main(message: cl.Message):
     try:
         conversation_history = cl.user_session.get("history", [])
 
-        nodes = generator.retriever.retrieve(message.content)
-
-        context_str = "\n\n".join([
-            f"[Source {i+1}] {node.node.get_content()}"
-            for i, node in enumerate(nodes)
-        ])
-
-        messages = [
-            ChatMessage(
-                role=MessageRole.SYSTEM,
-                content="""Tu es un formateur expert en arbitrage de Kudo.
-
-RÈGLES STRICTES À RESPECTER:
-1. Tu dois UNIQUEMENT utiliser les informations présentes dans le contexte fourni
-2. Si une information n'est PAS dans le contexte, tu DOIS dire "Je n'ai pas cette information dans le règlement fourni"
-3. NE JAMAIS inventer, extrapoler ou ajouter des informations de ta connaissance générale
-4. Cite EXACTEMENT les passages du règlement sans les reformuler de manière substantielle
-5. Si le contexte ne contient pas assez d'informations pour répondre complètement, indique-le clairement
-
-Format de réponse:
-- Commence par citer la règle exacte du contexte
-- Explique ensuite de manière pédagogique EN RESTANT FIDÈLE au texte source
-- Si tu donnes un exemple, assure-toi qu'il est directement basé sur le contexte fourni"""
-            ),
-        ]
-
-        for msg_dict in conversation_history[-6:]:
-            role = MessageRole.USER if msg_dict["role"] == "user" else MessageRole.ASSISTANT
-            messages.append(ChatMessage(role=role, content=msg_dict["content"]))
-
-        user_prompt = f"""CONTEXTE DU RÈGLEMENT OFFICIEL:
-{context_str}
-
----
-
-QUESTION DE L'UTILISATEUR:
-{message.content}
-
----
-
-INSTRUCTIONS:
-Réponds à la question en utilisant UNIQUEMENT les informations présentes dans le contexte ci-dessus.
-Si l'information n'est pas dans le contexte, indique-le clairement.
-Cite les règles exactes du règlement."""
-
-        messages.append(ChatMessage(role=MessageRole.USER, content=user_prompt))
-
         msg = cl.Message(content="")
         await msg.send()
 
-        response_stream = generator.llm_manager.llm.stream_chat(messages)
+        stream = generator.generate_stream(
+            question=message.content,
+            include_sources=True,
+            conversation_history=conversation_history,
+        )
 
-        for chunk in response_stream:
-            if chunk.delta:
-                await msg.stream_token(chunk.delta)
+        nodes = []
+        async for token, streamed_nodes in stream:
+            if token:
+                await msg.stream_token(token)
+            nodes = streamed_nodes
 
         await msg.update()
 
@@ -166,13 +124,13 @@ Cite les règles exactes du règlement."""
                 metadata = node.node.metadata
                 section = metadata.get("section", "N/A")
                 category = metadata.get("category", "N/A")
-                article_ref = metadata.get("article_ref", "N/A")
+                article_reference = metadata.get("article_reference", "N/A")
                 excerpt = node.node.get_content()[:400]
                 score = node.score
 
                 source_content = f"""**Section:** {section}
 **Catégorie:** {category}
-**Référence:** {article_ref}
+**Référence:** {article_reference}
 **Score de pertinence:** {score:.3f}
 
 ---

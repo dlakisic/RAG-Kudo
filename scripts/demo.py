@@ -14,7 +14,7 @@ from loguru import logger
 from src.ingestion import DoclingProcessor, SemanticChunker
 from src.retrieval import VectorStoreManager, KudoRetriever
 from src.generation import LLMManager, KudoResponseGenerator
-from src.utils import require_openai_api_key
+from src.utils import require_api_keys
 from config import settings
 
 
@@ -164,7 +164,7 @@ def main():
 ╚═══════════════════════════════════════════════════════════╝
 """)
 
-    require_openai_api_key()
+    require_api_keys()
 
     logger.info(f"Configuration:")
     logger.info(f"  LLM: {settings.llm_provider}/{settings.llm_model}")
