@@ -3,7 +3,7 @@ Retriever personnalisé pour le système RAG Kudo.
 Implémente la recherche hybride et le re-ranking.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from loguru import logger
 
 from llama_index.core import VectorStoreIndex, Settings as LlamaSettings
@@ -40,9 +40,11 @@ class KudoRetriever:
             metadata_filters: Filtres de métadonnées
         """
         self.index = index
-        self.top_k = top_k or settings.top_k
-        self.similarity_threshold = similarity_threshold or settings.similarity_threshold
-        self.use_reranking = use_reranking or settings.use_reranking
+        self.top_k = top_k if top_k is not None else settings.top_k
+        self.similarity_threshold = (
+            similarity_threshold if similarity_threshold is not None else settings.similarity_threshold
+        )
+        self.use_reranking = use_reranking if use_reranking is not None else settings.use_reranking
         self.use_query_reformulation = use_query_reformulation
         self.metadata_filters = metadata_filters or {}
 
@@ -67,7 +69,7 @@ class KudoRetriever:
             f"query_reformulation={self.use_query_reformulation}"
         )
 
-    def retrieve(self, query: str) -> List[NodeWithScore]:
+    def retrieve(self, query: Union[str, QueryBundle]) -> List[NodeWithScore]:
         """
         Récupère les documents pertinents pour une requête.
 
@@ -77,10 +79,11 @@ class KudoRetriever:
         Returns:
             Liste de nodes avec scores de pertinence
         """
-        logger.info(f"Recherche pour: {query}")
+        query_str = query.query_str if isinstance(query, QueryBundle) else query
+        logger.info(f"Recherche pour: {query_str}")
 
         if self.use_query_reformulation and self.query_reformulator:
-            query_variations = self.query_reformulator.reformulate(query)
+            query_variations = self.query_reformulator.reformulate(query_str)
             logger.info(f"Généré {len(query_variations)} variations de requêtes")
 
             all_nodes = []
@@ -98,7 +101,7 @@ class KudoRetriever:
             logger.info(f"Fusion: {len(nodes)} nodes uniques après RRF")
 
         else:
-            enhanced_query = self._enhance_query(query)
+            enhanced_query = self._enhance_query(query_str)
             query_bundle = QueryBundle(query_str=enhanced_query)
             nodes = self.base_retriever.retrieve(query_bundle)
             logger.info(f"Récupéré {len(nodes)} nodes initiaux")
@@ -110,8 +113,10 @@ class KudoRetriever:
             nodes = self._filter_by_metadata(nodes, self.metadata_filters)
             logger.info(f"{len(nodes)} nodes après filtrage de métadonnées")
 
+        nodes = self._filter_noisy_chunks(nodes, query_str)
+
         if self.use_reranking and len(nodes) > 1:
-            nodes = self._rerank_nodes(query, nodes)
+            nodes = self._rerank_nodes(query_str, nodes)
             logger.info(f"Re-ranking appliqué")
 
         nodes = nodes[: self.top_k]
@@ -176,6 +181,62 @@ class KudoRetriever:
                 filtered_nodes.append(node)
 
         return filtered_nodes
+
+    def _filter_noisy_chunks(
+        self, nodes: List[NodeWithScore], query: str
+    ) -> List[NodeWithScore]:
+        """
+        Filtre les chunks bruités (trop de balises image, contenu non pertinent).
+
+        Args:
+            nodes: Liste de nodes
+
+        Returns:
+            Nodes filtrés
+        """
+        filtered = []
+        query_lower = query.lower()
+        technical_intent = any(
+            kw in query_lower
+            for kw in [
+                "technique",
+                "frappe",
+                "coup",
+                "kime",
+                "sol",
+                "saisie",
+                "point",
+                "équipement",
+            ]
+        )
+        for node in nodes:
+            content = node.node.get_content()
+
+            # Filtrer les chunks avec trop de balises <!-- image -->
+            image_count = content.count("<!-- image -->")
+            if image_count > 5:
+                logger.debug(f"Chunk filtré: trop d'images ({image_count})")
+                continue
+
+            # Filtrer le protocole d'arrivée des arbitres sur questions techniques.
+            if (
+                technical_intent
+                and "Arbitres arrivent en file indienne" in content
+                and len(content) > 500
+            ):
+                logger.debug("Chunk filtré: protocole d'arrivée des arbitres")
+                continue
+
+            filtered.append(node)
+
+        if not filtered:
+            logger.warning("Filtrage chunks bruités a tout supprimé, retour des nodes originaux")
+            return nodes
+
+        if len(filtered) < len(nodes):
+            logger.info(f"Filtrage chunks bruités: {len(nodes)} → {len(filtered)}")
+
+        return filtered
 
     def _rerank_nodes(
         self, query: str, nodes: List[NodeWithScore]

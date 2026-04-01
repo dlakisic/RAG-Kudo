@@ -10,10 +10,10 @@ from loguru import logger
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.core.schema import TextNode
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.embeddings.openai import OpenAIEmbedding
 import chromadb
 
 from config import settings
+from src.utils.embeddings import build_embedding_model
 
 
 class VectorStoreManager:
@@ -37,18 +37,10 @@ class VectorStoreManager:
         self.persist_dir = persist_dir or settings.vectorstore_dir
         self.embedding_model_name = embedding_model or settings.embedding_model
 
-        self.embed_model = OpenAIEmbedding(
-            model=self.embedding_model_name,
-            api_key=settings.openai_api_key,
-        )
+        self.embed_model = build_embedding_model(self.embedding_model_name)
 
         self.chroma_client = chromadb.PersistentClient(path=str(self.persist_dir))
-        self.chroma_collection = self.chroma_client.get_or_create_collection(
-            name=self.collection_name
-        )
-
-        self.vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
-        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
+        self._refresh_collection_handles()
 
         self.index: Optional[VectorStoreIndex] = None
 
@@ -68,6 +60,7 @@ class VectorStoreManager:
             VectorStoreIndex créé
         """
         logger.info(f"Création de l'index avec {len(nodes)} nodes")
+        self._refresh_collection_handles()
 
         self.index = VectorStoreIndex(
             nodes=nodes,
@@ -87,6 +80,7 @@ class VectorStoreManager:
             VectorStoreIndex chargé
         """
         logger.info(f"Chargement de l'index depuis {self.persist_dir}")
+        self._refresh_collection_handles()
 
         try:
             self.index = VectorStoreIndex.from_vector_store(
@@ -117,7 +111,11 @@ class VectorStoreManager:
     def delete_collection(self) -> None:
         """Supprime la collection actuelle."""
         logger.warning(f"Suppression de la collection '{self.collection_name}'")
-        self.chroma_client.delete_collection(name=self.collection_name)
+        try:
+            self.chroma_client.delete_collection(name=self.collection_name)
+        except Exception as e:
+            logger.warning(f"Suppression collection ignorée (peut-être inexistante): {e}")
+        self._refresh_collection_handles()
         logger.success("Collection supprimée")
 
     def get_stats(self) -> dict:
@@ -128,6 +126,7 @@ class VectorStoreManager:
             Dictionnaire avec les statistiques
         """
         try:
+            self._refresh_collection_handles()
             count = self.chroma_collection.count()
             return {
                 "collection_name": self.collection_name,
@@ -153,6 +152,7 @@ class VectorStoreManager:
         logger.info(f"Recherche avec filtres: {metadata_filter}")
 
         try:
+            self._refresh_collection_handles()
             results = self.chroma_collection.query(
                 query_texts=[""],
                 where=metadata_filter,
@@ -162,6 +162,14 @@ class VectorStoreManager:
         except Exception as e:
             logger.error(f"Erreur lors de la recherche: {e}")
             return []
+
+    def _refresh_collection_handles(self) -> None:
+        """(Re)crée les handles collection/vector_store/storage_context."""
+        self.chroma_collection = self.chroma_client.get_or_create_collection(
+            name=self.collection_name
+        )
+        self.vector_store = ChromaVectorStore(chroma_collection=self.chroma_collection)
+        self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
 
 
 def main():

@@ -38,11 +38,13 @@ class QueryReformulator:
         """
         if llm_manager is None:
             from src.generation.llm_manager import LLMManager
-            llm_manager = LLMManager()
+            # Reformulation deterministe pour améliorer la reproductibilite des runs d'evaluation.
+            llm_manager = LLMManager(temperature=0.0)
 
         self.llm_manager = llm_manager
         self.use_llm_reformulation = use_llm_reformulation
         self.num_variations = num_variations
+        self._cache: dict[str, List[str]] = {}
 
         logger.info(
             f"QueryReformulator initialisé avec {num_variations} variations LLM"
@@ -64,6 +66,11 @@ class QueryReformulator:
             Liste de requêtes reformulées
         """
         logger.info(f"Reformulation de: '{query}'")
+        cache_key = query.strip().lower()
+        cached = self._cache.get(cache_key)
+        if cached:
+            logger.debug("Reformulation récupérée depuis le cache")
+            return list(cached)
 
         queries = []
 
@@ -86,6 +93,7 @@ class QueryReformulator:
         for i, q in enumerate(unique_queries, 1):
             logger.debug(f"  {i}. {q}")
 
+        self._cache[cache_key] = list(unique_queries)
         return unique_queries
 
     def _llm_reformulate(self, query: str) -> List[str]:
@@ -99,24 +107,26 @@ class QueryReformulator:
             Liste de requêtes reformulées par le LLM
         """
         try:
-            prompt = f"""Tu es un expert en arbitrage de Kudo. Ta tâche est de reformuler la question suivante pour améliorer la recherche de documents.
+            prompt = f"""Question originale: "{query}"
 
-Question originale: "{query}"
+Génère {self.num_variations} reformulations de cette question qui:
+1. Gardent le même sens dans le contexte du KUDO (art martial japonais / sport de combat)
+2. Utilisent des termes synonymes ou la terminologie officielle KIF
+3. Restent courtes et précises (max 15 mots)
+4. Peuvent inclure des termes techniques en anglais ou en russe si cela améliore la recherche documentaire
 
-Génère {self.num_variations} reformulations différentes de cette question qui:
-1. Utilisent des termes techniques spécifiques au Kudo
-2. Sont plus précises et détaillées
-3. Couvrent différents aspects de la question
-4. Utilisent la terminologie officielle d'arbitrage
+IMPORTANT: Le Kudo est un art martial. Les termes comme "frappes", "coups", "techniques" font référence aux TECHNIQUES DE COMBAT, pas à autre chose.
 
-Format: Une reformulation par ligne, sans numérotation ni tirets.
+Format: Une reformulation par ligne, sans numérotation.
 
 Reformulations:"""
 
             messages = [
                 ChatMessage(
                     role=MessageRole.SYSTEM,
-                    content="Tu es un expert en arbitrage de Kudo spécialisé dans la reformulation de questions.",
+                    content="""Tu es un assistant spécialisé en Kudo (Daido Juku), un art martial japonais combinant karaté, judo et boxe.
+Ton rôle est de reformuler des questions sur le règlement d'arbitrage Kudo.
+IMPORTANT: Reste TOUJOURS dans le contexte des sports de combat. Ne change JAMAIS le sens de la question.""",
                 ),
                 ChatMessage(
                     role=MessageRole.USER,
