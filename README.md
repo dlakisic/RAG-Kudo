@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![LlamaIndex](https://img.shields.io/badge/LlamaIndex-0.12+-green.svg)](https://www.llamaindex.ai/)
-[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4-orange.svg)](https://openai.com/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1--mini-orange.svg)](https://openai.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Système RAG (Retrieval-Augmented Generation) avancé pour la formation des arbitres en Kudo. Utilise **LlamaIndex**, **Docling**, **RAGAS**, et **LangFuse** pour fournir des réponses précises et traçables basées sur le règlement officiel.
@@ -26,17 +26,17 @@ Créer un assistant intelligent pour la formation des arbitres de Kudo qui :
 graph TB
     A[📄 Documents Sources<br/>PDF - Règlement Kudo Officiel] --> B[🔧 Docling Processor<br/>• Extraction structurée texte + tables<br/>• OCR pour documents scannés<br/>• Détection sections automatique]
 
-    B --> C[✂️ Semantic Chunking<br/>• LlamaIndex intelligent chunking<br/>• 800 tokens, overlap 150<br/>• Enrichissement métadonnées]
+    B --> C[✂️ Semantic Chunking<br/>• Découpage par ruptures sémantiques<br/>• Fallback re-découpage à 1500 chars<br/>• Enrichissement métadonnées]
 
     C --> D[💾 Vector Store ChromaDB<br/>• text-embedding-3-small<br/>• Stockage persistant local]
 
     D --> E[🔍 Advanced Retrieval Pipeline]
 
     E --> E1[🔄 Query Reformulation<br/>LLM-based variations]
-    E1 --> E2[🎯 Semantic Search<br/>Top-K = 10]
-    E2 --> E3[⚡ Re-ranking<br/>CrossEncoder Top-5]
+    E1 --> E2[🎯 Semantic Search<br/>Top-K = 5]
+    E2 --> E3[⚡ Re-ranking<br/>BGE-reranker-v2-m3 Top-5]
 
-    E3 --> F[🤖 Response Generation<br/>• GPT-4 Turbo temp=0.0<br/>• Prompts optimisés fidélité<br/>• Streaming Chainlit]
+    E3 --> F[🤖 Response Generation<br/>• GPT-4.1-mini temp=0.1<br/>• Prompts optimisés fidélité<br/>• Streaming Chainlit]
 
     F --> G[📊 Observability & Evaluation]
 
@@ -59,10 +59,10 @@ graph TB
 ## ✨ Caractéristiques Clés
 
 ### 🔬 Évaluation Quantitative (RAGAS)
-- **Faithfulness**: 55.6% → Optimisation en cours (objectif: >75%)
-- **Answer Relevancy**: 86.3%
-- **Context Precision**: 71.8%
-- **Context Recall**: 80.0%
+- **Faithfulness**: 89.4%
+- **Answer Relevancy**: 85.6%
+- **Context Precision**: 79.9%
+- **Context Recall**: 82.5%
 
 Voir [EVALUATION.md](EVALUATION.md) pour les détails complets.
 
@@ -85,17 +85,19 @@ Voir [EVALUATION.md](EVALUATION.md) pour les détails complets.
 
 ## 📊 Résultats d'Évaluation
 
-| Métrique | Score Baseline | Statut | Détails |
-|----------|---------------|--------|---------|
-| **Faithfulness** | 55.6% | ⚠️ En amélioration | LLM ajoutait 44% d'infos externes → Prompts optimisés |
-| **Answer Relevancy** | 86.3% | ✅ Excellent | Réponses pertinentes aux questions |
-| **Context Precision** | 71.8% | ✅ Bon | Retrieval efficace |
-| **Context Recall** | 80.0% | ✅ Bon | Peu d'informations manquées |
+| Métrique | Baseline | Score Actuel | Statut |
+|----------|----------|-------------|--------|
+| **Faithfulness** | 55.6% | **89.4%** | ✅ Excellent |
+| **Answer Relevancy** | 86.3% | **85.6%** | ✅ Excellent |
+| **Context Precision** | 71.8% | **79.9%** | ✅ Bon |
+| **Context Recall** | 80.0% | **82.5%** | ✅ Bon |
 
-**Actions prises pour améliorer Faithfulness:**
-1. Renforcement des prompts système (interdiction stricte d'inventer)
-2. Réduction température: 0.1 → 0.0
-3. Instructions explicites de citer exactement les sources
+**Optimisations réalisées :**
+1. Réécriture des prompts système pour gérer le contexte multilingue (FR/EN/RU)
+2. Ajout d'un fallback de re-découpage pour les chunks surdimensionnés (max 1500 chars)
+3. Passage au re-ranker BAAI/bge-reranker-v2-m3
+4. Calibration du seuil de similarité (0.7 → 0.3) adapté aux scores cosinus réels
+5. Audit et correction des ground truths avec expertise métier
 
 📈 [Voir l'analyse complète](EVALUATION.md)
 
@@ -132,16 +134,17 @@ cp .env.example .env
 ```bash
 # LLM
 OPENAI_API_KEY=sk-...
-LLM_MODEL=gpt-4-turbo
-LLM_TEMPERATURE=0.0
+LLM_MODEL=gpt-4.1-mini
+LLM_TEMPERATURE=0.1
 
 # Embeddings
 EMBEDDING_MODEL=text-embedding-3-small
 
 # Retrieval
 TOP_K=5
+SIMILARITY_THRESHOLD=0.3
 USE_RERANKING=true
-RERANKER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+RERANKER_MODEL=BAAI/bge-reranker-v2-m3
 
 # LangFuse (optionnel)
 LANGFUSE_ENABLED=true
@@ -257,12 +260,12 @@ RAG-Kudo/
 
 ### Retrieval Pipeline
 1. **Query Reformulation**: LLM génère des variations de la question
-2. **Semantic Search**: Embeddings + similarité cosinus (Top-10)
-3. **Re-ranking**: CrossEncoder affine les résultats (Top-5)
+2. **Semantic Search**: Embeddings + similarité cosinus + RRF fusion
+3. **Re-ranking**: BAAI/bge-reranker-v2-m3 affine les résultats (Top-5)
 
 ### Generation
-- **Prompts optimisés** pour fidélité aux sources
-- **Temperature 0.0** pour réponses déterministes
+- **GPT-4.1-mini** avec prompts optimisés pour fidélité aux sources multilingues
+- **Temperature 0.1** pour réponses quasi-déterministes
 - **Citations explicites** du règlement
 
 ### Observabilité
@@ -282,7 +285,7 @@ RAG-Kudo/
 
 ### Coûts (estimation)
 - Embeddings: ~$0.0001 par chunk
-- LLM (GPT-4 Turbo): ~$0.01-0.03 par requête
+- LLM (GPT-4.1-mini): ~$0.005-0.015 par requête
 - RAGAS évaluation: ~$0.50-1.00 pour 10 questions
 
 ---
@@ -313,10 +316,10 @@ quiz = generator.generate_quiz_question(category="scoring")
 
 | Challenge | Solution Implémentée |
 |-----------|---------------------|
-| **Faithfulness faible (55.6%)** | Prompts stricts + température 0.0 + instructions explicites |
-| **Contexte réglementaire** | Chunking sémantique + métadonnées enrichies |
-| **Multilingue (FR/EN/RU)** | Prompts adaptatifs + support Chainlit |
-| **Latence retrieval** | Re-ranking sur GPU + cache |
+| **Faithfulness faible (55.6% → 89.4%)** | Réécriture des prompts + gestion multilingue + audit ground truths |
+| **Chunks surdimensionnés** | Fallback de re-découpage à 1500 chars sur frontières naturelles |
+| **Multilingue (FR/EN/RU)** | Prompts multilingues + extraction cross-langue |
+| **Précision retrieval** | Re-ranking BGE + RRF fusion + calibration seuil similarité |
 | **Traçabilité** | LangFuse pour observabilité complète |
 
 ---
