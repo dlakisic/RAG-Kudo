@@ -50,9 +50,9 @@ class Settings(BaseSettings):
 
     # Retrieval
     top_k: int = Field(default=5, gt=0)
-    similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    similarity_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
     use_reranking: bool = Field(default=False)
-    reranker_model: Optional[str] = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
+    reranker_model: Optional[str] = Field(default="cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
 
     # Generation
     max_tokens: int = Field(default=2000, gt=0)
