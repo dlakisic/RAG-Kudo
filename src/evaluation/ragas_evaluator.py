@@ -22,67 +22,104 @@ from config import settings
 from src.generation import KudoResponseGenerator
 
 
+# Mapping des noms de métriques vers les objets RAGAS
+AVAILABLE_METRICS = {
+    "faithfulness": faithfulness,
+    "answer_relevancy": answer_relevancy,
+    "context_precision": context_precision,
+    "context_recall": context_recall,
+}
+
+# Métriques qui nécessitent ground_truth
+METRICS_REQUIRING_GROUND_TRUTH = {"context_precision", "context_recall"}
+
+
 class RagasEvaluator:
     """
     Évaluateur utilisant RAGAS pour mesurer les performances du RAG.
-    
-    Métriques évaluées:
-    - Faithfulness: La réponse est-elle fidèle aux documents sources ?
-    - Answer Relevancy: La réponse répond-elle bien à la question ?
-    - Context Precision: Les documents récupérés sont-ils pertinents ?
-    - Context Recall: Tous les éléments nécessaires ont-ils été récupérés ?
+
+    Métriques disponibles:
+    - faithfulness: La réponse est-elle fidèle aux documents sources ?
+    - answer_relevancy: La réponse répond-elle bien à la question ?
+    - context_precision: Les documents récupérés sont-ils pertinents ?
+    - context_recall: Tous les éléments nécessaires ont-ils été récupérés ?
     """
-    
+
     def __init__(
         self,
         generator: Optional[KudoResponseGenerator] = None,
+        metrics: Optional[List[str]] = None,
     ):
         """
         Initialise l'évaluateur RAGAS.
-        
+
         Args:
             generator: Générateur de réponses RAG
+            metrics: Liste des noms de métriques à utiliser.
+                     Options: "faithfulness", "answer_relevancy",
+                              "context_precision", "context_recall"
+                     Si None, utilise toutes les métriques.
         """
         self.generator = generator
-        self.metrics = [
-            faithfulness,
-            answer_relevancy,
-            context_precision,
-            context_recall,
-        ]
-        
-        logger.info("RagasEvaluator initialisé avec 4 métriques")
+
+        if metrics is None:
+            self.metric_names = list(AVAILABLE_METRICS.keys())
+        else:
+            invalid = set(metrics) - set(AVAILABLE_METRICS.keys())
+            if invalid:
+                raise ValueError(
+                    f"Métriques invalides: {invalid}. "
+                    f"Options: {list(AVAILABLE_METRICS.keys())}"
+                )
+            self.metric_names = metrics
+
+        self.metrics = [AVAILABLE_METRICS[name] for name in self.metric_names]
+        self.requires_ground_truth = bool(
+            set(self.metric_names) & METRICS_REQUIRING_GROUND_TRUTH
+        )
+
+        logger.info(f"RagasEvaluator initialisé avec {len(self.metrics)} métrique(s): {self.metric_names}")
     
     def evaluate_dataset(
         self,
         test_questions: List[str],
-        ground_truths: List[str],
+        ground_truths: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         Évalue le système RAG sur un dataset de test.
-        
+
         Args:
             test_questions: Liste de questions de test
-            ground_truths: Réponses de référence attendues
-            
+            ground_truths: Réponses de référence attendues.
+                           Requis uniquement pour context_precision et context_recall.
+
         Returns:
             DataFrame avec les résultats d'évaluation
         """
         if not self.generator:
             raise ValueError("Generator non initialisé")
-        
-        if len(test_questions) != len(ground_truths):
+
+        if self.requires_ground_truth and ground_truths is None:
+            raise ValueError(
+                f"ground_truths requis pour les métriques: "
+                f"{set(self.metric_names) & METRICS_REQUIRING_GROUND_TRUTH}"
+            )
+
+        if ground_truths and len(test_questions) != len(ground_truths):
             raise ValueError("Le nombre de questions et de ground truths doit être identique")
 
         logger.info(f"Évaluation sur {len(test_questions)} questions")
+        logger.info(f"Métriques: {self.metric_names}")
 
         data = {
             "question": [],
             "answer": [],
             "contexts": [],
-            "ground_truth": [],
         }
-        
+
+        if ground_truths:
+            data["ground_truth"] = []
+
         for i, question in enumerate(test_questions):
             logger.info(f"[{i+1}/{len(test_questions)}] Traitement: {question[:50]}...")
 
@@ -91,13 +128,15 @@ class RagasEvaluator:
 
                 contexts = [node.node.get_content() for node in nodes]
 
-                response = self.generator.generate(question)
-                
+                response = self.generator.generate(question, retrieved_nodes=nodes)
+
                 data["question"].append(question)
                 data["answer"].append(response["answer"])
                 data["contexts"].append(contexts)
-                data["ground_truth"].append(ground_truths[i])
-                
+
+                if ground_truths:
+                    data["ground_truth"].append(ground_truths[i])
+
             except Exception as e:
                 logger.error(f"Erreur lors du traitement de la question {i+1}: {e}")
                 continue
@@ -140,7 +179,7 @@ class RagasEvaluator:
     def _log_summary(self, results_df: pd.DataFrame):
         """
         Affiche un résumé des résultats d'évaluation.
-        
+
         Args:
             results_df: DataFrame avec les résultats
         """
@@ -148,11 +187,11 @@ class RagasEvaluator:
         logger.info("RÉSUMÉ DE L'ÉVALUATION RAGAS")
         logger.info("="*60)
 
-        for metric in ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]:
+        for metric in self.metric_names:
             if metric in results_df.columns:
                 mean_score = results_df[metric].mean()
                 logger.info(f"{metric.replace('_', ' ').title():.<40} {mean_score:.3f}")
-        
+
         logger.info("="*60 + "\n")
     
     def evaluate_single(

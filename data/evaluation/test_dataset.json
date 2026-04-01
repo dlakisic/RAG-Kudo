@@ -12,14 +12,14 @@
     "Combien de phases de sol sont autorisées en U19 ?"
   ],
   "ground_truths": [
-    "Un ippon vaut 8 points en Kudo. Il est attribué uniquement en cas de soumission ou de KO/TKO (knockout ou technical knockout).",
-    "Les techniques de frappe autorisées en Kudo incluent les coups de poing, les coups de pied, les coups de genou, les coups de coude et les coups de tête.",
+    "Un ippon vaut 8 points en Kudo. Il est attribué en cas de KO/TKO, de soumission, ou par accumulation de 8 points (par exemple 2 waza-ari, ou 1 waza-ari + 2 yuko, etc.).",
+    "Les techniques de frappe autorisées en Kudo pour les adultes incluent les coups de poing, les coups de pied, les coups de genou, les coups de coude et les coups de tête. Pour les catégories jeunes (U13, U16, U19), certaines techniques comme les coups de coude et de tête peuvent être restreintes.",
     "Un combat de Kudo pour les hommes adultes dure 3 minutes en un seul round. En cas d'égalité, un extra round de 3 minutes peut être organisé.",
-    "Les points sont attribués selon quatre niveaux : koka (1 point), yuko (2 points), waza-ari (4 points) et ippon (8 points). Un ippon met fin au combat et est attribué pour KO/TKO ou soumission.",
+    "Les points sont attribués selon quatre niveaux : koka (1 ou 2 points), yuko (2 points), waza-ari (4 points) et ippon (8 points). Un koka sans kime (KOKA1) vaut 1 point, un koka avec kime (KOKA2/koka-ni) vaut 2 points. Bien que koka-ni et yuko valent tous deux 2 points, yuko est supérieur au koka dans la hiérarchie de départage (Waza-ari > Yuko > Koka). Un ippon met fin au combat et peut être obtenu par KO/TKO, soumission, ou accumulation de 8 points.",
     "L'équipement obligatoire pour un combattant U19 comprend le casque NHG (Neo Head Gear), le Kudogi blanc, les mitaines NFG (Neo Fist Gear), les mitaines avant-bras, le plastron, le protège-tibia et pied, et l'Obinome (coquille).",
     "Les coups de tête sont interdits pour les catégories U13, U16 et U19. Ils sont autorisés uniquement pour les adultes, femmes adultes et vétérans.",
     "Au sol, pour marquer un kime, l'arbitre doit estimer qu'il y a maîtrise de l'adversaire, technique et contrôle. L'adversaire doit être immobilisé par l'assaillant ou inerte de fatigue, et 3 coups sont portés en direction de l'adversaire sans le toucher.",
-    "Les frappes génitales sont interdites et constituent une faute, sauf dans un cas particulier spécifique : lorsqu'il y a un écart de 25 kg entre les deux adversaires et que cela est spécifié dès le début du combat.",
+    "Les frappes génitales sont interdites et constituent une faute, sauf dans un cas particulier spécifique : lorsqu'il y a un écart de poids important entre les deux adversaires (25 kg selon les règles françaises, ou différence de PI de 20 selon les règles internationales) et que cela est spécifié dès le début du combat.",
     "Pour les adultes, les saisies sont autorisées pendant 10 secondes maximum.",
     "En U19, 2 phases de sol de 30 secondes chacune sont autorisées."
   ]
