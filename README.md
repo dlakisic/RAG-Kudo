@@ -33,7 +33,7 @@ graph TB
     D --> E[🔍 Advanced Retrieval Pipeline]
 
     E --> E1[🔄 Query Reformulation<br/>LLM-based variations]
-    E1 --> E2[🎯 Semantic Search<br/>Top-K = 5]
+    E1 --> E2[🎯 Semantic Search<br/>Top-K = 15]
     E2 --> E3[⚡ Re-ranking<br/>BGE-reranker-v2-m3 Top-5]
 
     E3 --> F[🤖 Response Generation<br/>• GPT-4.1-mini temp=0.1<br/>• Prompts optimisés fidélité<br/>• Streaming Chainlit]
